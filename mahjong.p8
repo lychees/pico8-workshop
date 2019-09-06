@@ -719,18 +719,46 @@ end
 
 
 --begin game
-cls()
-current_player = flr(rnd(4))
-first_dealer = current_player
---[[draw_table()
-flip()
-wait(15)--]]
-build_wall()
-round_over = false
-flashing=false
-while not round_over do
- local target_x, target_y = 0,0
- if current_player == 0 then
+function sub_claim(type, options)  
+end
+
+function claim(options)
+  options = {"riichi", "gang", "tsumo"};
+  cls()
+  sfx(1)  
+  local selection = 1
+  local flashing = 1
+  while true do
+    draw_table()
+    draw_wall()
+    draw_discards()
+    draw_hands()
+    for i=1, #options do
+      print(options[i], 100, 116-8*i, 0)
+    end
+    spr(90, 90, 116-8*selection-2)    
+    if btnp(2) then
+      if selection < #options then
+        selection = selection + 1
+        sfx(7)
+      end
+    elseif btnp(3) then
+      if selection > 1 then 
+        selection = selection - 1
+        sfx(7)
+      end
+    elseif btnp(4) then
+      sfx(8)
+      break
+    elseif btnp(5) then 
+      sfx(8)
+      break
+    end
+    flip()
+  end
+end
+
+function your_turn()
   local temptile, sprite_id, x, y = retrieve_next_tile()
   local target_x, target_y = get_coords_in_hand(player_hand, #player_hand+1)
   move_tile(sprite_id, x, y, target_x, target_y)
@@ -744,29 +772,30 @@ while not round_over do
   local selection, offset, discard_idx = 14, 2, nil
   flashing=true
   clip(0,110,127,18)
+  claim()
   while not discard_idx do
-   if selection == 14 then
-    offset = 2
-   else
-    offset = 0
-   end
-   draw_table()
-   draw_wall()
-   draw_discards()
-   draw_hands(flashing, selection)
-   spr(204, 18+(6*selection)+offset, 111)
-   flip()
-   flashing = not flashing
-   if btnp(0) then
-    selection = 1+(selection-2)%14
-    sfx(7)
-   elseif btnp(1) then
-    selection = 1+(selection)%14
-    sfx(7)
-   elseif btnp(4) then
-    sfx(8)
-    discard_idx=selection
-   end
+    if selection == 14 then
+      offset = 2
+    else
+      offset = 0
+    end
+    draw_table()
+    draw_wall()
+    draw_discards()
+    draw_hands(flashing, selection)
+    spr(204, 18+(6*selection)+offset, 111)
+    flip()
+    flashing = not flashing
+    if btnp(0) then
+      selection = 1+(selection-2)%14
+      sfx(7)
+    elseif btnp(1) then
+      selection = 1+(selection)%14
+      sfx(7)
+    elseif btnp(4) then
+      sfx(8)
+      discard_idx=selection
+    end
   end
   clip()
   temptile=remove_from_hand(player_hand, discard_idx)
@@ -775,14 +804,10 @@ while not round_over do
   target_x,target_y=get_coords_in_pile(player_pile,#player_pile+1)
   move_tile(temptile:get_flat_id(), x,y,target_x,target_y)
   add(player_pile, temptile)
-  sfx(6)
-  draw_table()
-  draw_wall()
-  draw_discards()
-  draw_hands()
-  flip()
-  current_player=(current_player+1)%4
- else
+end
+
+function my_turn()
+  local target_x, target_y = 0, 0
   local current_hand=hands[current_player+1]
   local current_pile=piles[current_player+1]
   local temptile, sprite_id, x, y = retrieve_next_tile()
@@ -802,24 +827,37 @@ while not round_over do
   target_x,target_y=get_coords_in_pile(current_pile,#current_pile+1)
   move_tile(temptile:discard_sprite(current_player),x,y,target_x,target_y)
   add(current_pile, temptile)
-  sfx(6)
-  draw_table()
-  draw_wall()
-  draw_discards()
-  draw_hands()
+end
+
+function _init()  
+  cls()
+  current_player = flr(rnd(4))
+  first_dealer = current_player
+  -- draw_table()
   flip()
-  current_player=(current_player+1)%4
- end
- if tile_at(-14) == nil then
-  round_over = true
- end
+  -- wait(15)
+  build_wall()
+  while not round_over do  
+    if current_player == 0 then
+      your_turn()    
+    else
+      my_turn()
+    end
+    sfx(6)
+    draw_table()
+    draw_wall()
+    draw_discards()
+    draw_hands()    
+    flip()
+    current_player=(current_player+1)%4
+    if tile_at(-14) == nil then
+      round_over = true
+    end
+  end
+  
+  while true do
+  end
 end
-
-while true do
-end
-
-
-
 
 __gfx__
 544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd544444dd
