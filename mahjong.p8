@@ -13,7 +13,7 @@ wall_starting_point=1
 current_player = 0 -- 0 thru 3
 first_dealer = 0
 next_tile_in_wall=1
-draw_animation_length=8 --frames
+draw_animation_length=1 --frames
 
 --fix sprite transparency
 palt(0, false)
@@ -373,7 +373,7 @@ piles={player_pile, right_pile, top_pile, left_pile}
 --shuffles table all_tiles
 function shuffle_tiles()
  for i = 1, 136, 1 do
-  j=flr(rnd(136))+1
+  j=flr(rnd(136-i+1))+i
   all_tiles[i], all_tiles[j] = all_tiles[j], all_tiles[i]
  end
 end
@@ -382,8 +382,8 @@ function build_wall()
  next_tile_in_wall = 1
  wall_being_built = true
  shuffle_tiles()
- sfx(2)
- wait(90)
+ --sfx(2)
+ --wait(90)
  --wall building animation
  local tiles_idx = 1
  for i=34,2, -2 do
@@ -392,14 +392,17 @@ function build_wall()
     wl[i+j]=all_tiles[tiles_idx]
     tiles_idx += 1
    end
+   --[[
    draw_table()
    draw_wall()
    flip()
    sfx(0)
    wait(1)
+   --]]
   end
  end
  wall_being_built = false --go back to drawing walls the more efficient way
+ --[[
  draw_table()
  draw_wall()
  flip()
@@ -409,6 +412,10 @@ function build_wall()
   rectfill(29,64-yd,98,63+yd,2)
   flip()
  end
+ --]]
+ local d1_val=flr(rnd(6))+1
+ local d2_val=flr(rnd(6))+1
+ --[[
  wait(3)
  --dice roll animation
  sfx(5)
@@ -447,8 +454,6 @@ function build_wall()
   end
  end
  clip()
- local d1_val=flr(rnd(6))+1
- local d2_val=flr(rnd(6))+1
  wait(20)
  rectfill(29,29,98,98,2)
  rectfill(49,60,55,66,1)
@@ -469,6 +474,7 @@ function build_wall()
   draw_wall()
   flip()
  end
+ --]]
  draw_table()
  draw_wall()
  wait(8)
@@ -478,7 +484,7 @@ function build_wall()
  draw_wall()
  sfx(6)
  flip()
- wait(6)
+ --wait(6)
  --deal hands
  for i=1, 4 do
   for p=0, 3 do
@@ -716,9 +722,9 @@ end
 cls()
 current_player = flr(rnd(4))
 first_dealer = current_player
-draw_table()
+--[[draw_table()
 flip()
-wait(15)
+wait(15)--]]
 build_wall()
 round_over = false
 flashing=false
