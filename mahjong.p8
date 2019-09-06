@@ -24,17 +24,18 @@ palt(13, true)
 tile = {suit=0,value=0,base_sprite_id=0}
 --constructor
 function tile:new(o,suit,value,base_sprite_id)
- o=o or {}
- setmetatable(o,self)
- self.__index=self
- self.suit=suit
- self.value=value
- self.base_sprite_id=base_sprite_id
- self.dora_indicator_1=false
- self.dora_indicator_2=false
- self.dora_indicator_3=false
- self.dora_indicator_4=false
- return o
+  o=o or {}
+  setmetatable(o,self)
+  self.__index=self
+  self.suit=suit
+  self.value=value
+  self.base_sprite_id=base_sprite_id
+  self.dora_indicator_1=false
+  self.dora_indicator_2=false
+  self.dora_indicator_3=false
+  self.dora_indicator_4=false
+  self.raw_index=0
+  return o
 end
 
 function tile.get_flat_id(self)
@@ -141,6 +142,17 @@ for value=1,3 do
   add(all_tiles, new_tile)
  end
 end
+
+for i=1, #all_tiles do
+  local suit = all_tiles[i].suit
+  all_tiles[i].raw_index = 0
+  if suit == 4 then 
+    all_tiles[i].raw_index += 4
+    suit -= 1
+  end
+  all_tiles[i].raw_index += all_tiles[i].value+suit*9
+end
+
 
 wall_top = {}
 wall_right = {}
@@ -320,8 +332,8 @@ player={}
 
 function sort_hand(hand)
  for i=1,#hand do
-    local j = i
-    while j > 1 and (hand[j-1].suit > hand[j].suit or (hand[j-1].suit == hand[j].suit and hand[j-1].value > hand[j].value)) do
+    local j = i    
+    while j > 1 and hand[j-1].raw_index > hand[j].raw_index do
       hand[j],hand[j-1] = hand[j-1],hand[j]
       j = j - 1
     end
@@ -719,11 +731,107 @@ end
 
 
 --begin game
+count = {}
+divide_result = {}
+divide_results = {}
+
+function any_shuntsu_start_with(h) 
+  if h == nil then
+    return false
+  end
+  for i=0,2 do
+    if i*9+1 <= h and h <= i*9+7 then
+      ok = true
+      break
+    end
+  end
+  return ok and count[h] ~= nil and count[h] >= 1 and count[h+1] ~= nil and count[h+1] >= 1 and count[h+2] ~= nil and count[h+2] >= 1
+end
+
+function any_shuntsu(h)
+  if h == nil or h > 27 then
+    return false
+  end
+  if (any_shuntsu_start_with(h)) return true 
+  if (h ~= 1 and h ~= 10 and h ~= 19) then
+    if (any_shuntsu_start_with(h-1)) return true 
+    if (h ~= 2 and h ~= 11 and h ~= 20) then
+      if (any_shuntsu_start_with(h-2)) return true 
+    end
+  end  
+end
+
+function any_koutsu(h)
+  if h == nil or count[h] == nil then 
+    return false 
+  end 
+  return count[h] >= 3
+end
+
+function shuntsu_dfs(h)
+  local ok = false
+
+  if h == nil then 
+    return false
+  end
+  if any_shuntsu_start_with(h) then
+    count[h] -= 1
+    count[h+1] -= 1
+    count[h+2] -= 1
+    add(divide_result, {h,h+1,h+2})
+    mentsu_dfs(count, h)
+    del(divide_result, {h,h+1,h+2})
+    count[h+2] += 1
+    count[h+1] += 1
+    count[h] += 1
+  end
+end
+
+function koutsu_dfs(h)
+  if any_koutsu(h) then    
+    count[h] -= 3
+    add(divide_result, {h,h,h})
+    faces_dfs(count)
+    del(divide_result, {h,h,h})
+    count[h] += 3
+  end 
+end
+
+function mentsu_dfs()  
+  for i, v in pairs(count) do     
+    if v >= 1 then
+      koutsu_dfs(i)
+      shuntsu_dfs(i)
+      return
+    end
+  end
+  -- Succuess
+  add(divide_results, divide_results)
+end
+
+function is_agari()
+  divide_results = {}  
+  divide_result = {}
+  -- jantou, 11  
+  for i, v in pairs(count) do 
+    if v >= 2 then
+      v -= 2
+      add(divide_result, {v,v})
+      mentsu_dfs() 
+      del(divide_result, {v,v})
+      v += 2
+    end
+  end
+  -- return #divide_results > 0
+  if #divide_results > 0 then
+    return true
+  end
+end
+
 function sub_claim(type, options)  
 end
 
 function claim(options)
-  options = {"riichi", "gang", "tsumo"};
   cls()
   sfx(1)  
   local selection = 1
@@ -763,6 +871,8 @@ function your_turn()
   local target_x, target_y = get_coords_in_hand(player_hand, #player_hand+1)
   move_tile(sprite_id, x, y, target_x, target_y)
   add(player_hand, temptile)
+  if (count[temptile.raw_index] == nil) count[temptile.raw_index] = 0  
+  count[temptile.raw_index] += 1
   sfx(0)
   draw_table()
   draw_wall()
@@ -772,7 +882,9 @@ function your_turn()
   local selection, offset, discard_idx = 14, 2, nil
   flashing=true
   clip(0,110,127,18)
-  claim()
+  if is_agari(player_hand) then 
+    claim("tsumo")
+  end
   while not discard_idx do
     if selection == 14 then
       offset = 2
@@ -799,6 +911,7 @@ function your_turn()
   end
   clip()
   temptile=remove_from_hand(player_hand, discard_idx)
+  count[temptile.raw_index] -= 1
   sort_hand(player_hand)
   x,y=get_coords_in_hand(player_hand,discard_idx)
   target_x,target_y=get_coords_in_pile(player_pile,#player_pile+1)
@@ -819,14 +932,27 @@ function my_turn()
   draw_wall()
   draw_discards()
   draw_hands()
-  wait(6)
+  -- wait(6)
   local discard_idx=1+flr(rnd(#current_hand))
   temptile=remove_from_hand(current_hand, discard_idx)
-  sort_hand(current_hand)
+  if (count[temptile.raw_index] == nil) count[temptile.raw_index] = 0
+  count[temptile.raw_index] += 1
+  local options = {}  
+  if any_shuntsu(temptile.raw_index) then
+    add(options, "chii")
+  end
+  if any_koutsu(temptile.raw_index) then
+    add(options, "pon")
+  end
+  count[temptile.raw_index] -= 1
+  sort_hand(current_hand)  
   x,y=get_coords_in_hand(current_hand,discard_idx)
   target_x,target_y=get_coords_in_pile(current_pile,#current_pile+1)
   move_tile(temptile:discard_sprite(current_player),x,y,target_x,target_y)
   add(current_pile, temptile)
+  if #options > 0 then
+    claim(options)
+  end  
 end
 
 function _init()  
@@ -837,6 +963,14 @@ function _init()
   flip()
   -- wait(15)
   build_wall()
+
+  for i, v in pairs(player_hand) do    
+    if count[v.raw_index] == nil then 
+      count[v.raw_index] = 0
+    end
+    count[v.raw_index] += 1
+  end  
+
   while not round_over do  
     if current_player == 0 then
       your_turn()    
