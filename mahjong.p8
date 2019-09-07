@@ -36,15 +36,15 @@ function _init()
     p1.river.draw = function(self)
       for i=1,#self do
         suit, order = parse_tile(self[i])
-        print(order,10+4*i+o,80,7)
-        print(suit,10+4*i+o,80+6,7)
+        print(order,10+4*i,80,7)
+        print(suit,10+4*i,80+6,7)
       end
     end
     p2.river.draw = function(self)
       for i=1,#self do
         suit, order = parse_tile(self[i])
-        print(order,10+4*i+o,30,7)
-        print(suit,10+4*i+o,30+6,7)
+        print(order,10+4*i,30,7)
+        print(suit,10+4*i,30+6,7)
       end
     end    
     p1.hand.draw = function(self) 
@@ -52,7 +52,7 @@ function _init()
         if not(self.active and self.active_index == i and not self.flashing) then          
           suit, order = parse_tile(self[i])        
           local o = 0
-          if i==#self then 
+          if (i==#self) and ((i+1)%3==0) then 
             o += 2
           end
           print(order,p1.hand.st+4*i+o,100,7)
@@ -119,14 +119,16 @@ function _init()
     self.cpu_select_tile_to_discard = function(self)      
         sfx(0)
         local d = p2:discard(14)
-        if any_shuntsu(p2.count, d, p1.options.chii) then
-          add(p1.options, "chii")
+        local chiis = {}
+        if any_shuntsu(p2.count, d, chiis) then
+          add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
         end
-        --if any_koutsu(p2.count, d) then           
+        --if any_koutsu(p2.count, d) then
         if true then
-          add(p1.options, "pon")
+          add(p1.options, {text="pon", cmd=p1.pon, param=d})
         end
         if #p1.options > 0 then 
+          p1.options.target = d
           p1.options.active_index = 1
           self.update = self.naki
         else
@@ -150,13 +152,11 @@ function _init()
         end        
       end  
 
-      if btnp(4) then      
-        local cmd = p1.options[p1.options.active_index]
-        if cmd == 'chii' then 
-          p1:chii()
-        elseif cmd == 'pon' then
-          p1:pon()
-        end
+      if btnp(4) then 
+        p1:add(p1.options.target)
+        sort(p1.hand)
+        local op = p1.options[p1.options.active_index]
+        op.cmd(p1, op.param)
         local t = #p1.options
         for i=1,t do --!!!
           p1.options[i] = nil
@@ -180,7 +180,6 @@ function _init()
       end      
     end
 
-
     self.update = self.player_turn 
 
     self.children = {}
@@ -200,7 +199,7 @@ function _init()
         x0 += 4
         y0 += 4
         for i=1,#self do
-          print(self[i], x0+6, y0)
+          print(self[i].text, x0+6, y0)
           if i==self.active_index then
             spr(255,x0+sin(time()),y0)
           end
@@ -212,7 +211,7 @@ function _init()
     p1.fuuro.draw = function(self) 
       if #self > 0 then
         for i=1,#self do
-          local f={1,1,1}
+          local f=self[i]
           for j=1,#f do
             suit, order = parse_tile(f[j])        
             print(order,-5+i*15+4*j,100,7)
@@ -224,8 +223,7 @@ function _init()
     p2.fuuro.draw = function(self) 
       if #self > 0 then      
       end      
-    end    
-
+    end
     add(self.children, p1.fuuro)
     add(self.children, p2.fuuro)
   end  
@@ -313,7 +311,7 @@ function player:add(t)
   end 
   c[t] += 1
 end
-function player:del(i)
+function player:del(i)  
   local h = self.hand
   local c = self.count
   local t = h[i]
@@ -323,6 +321,22 @@ function player:del(i)
   if c[t] == 0 then
     c[t] = nil
   end  
+end
+function player:dels(m)  
+  local h = self.hand
+  local mi = 1
+  for i=1,#h do
+    if h[i] == m[mi] then
+      self:del(i)
+      i -= 1
+      mi += 1
+      if mi > #m then 
+        break
+      end
+    end
+  end 
+  h.st += 15  
+  sort(h)
 end
 function player:init(hill)   
   for i=1,13 do
@@ -348,30 +362,65 @@ function player:discard(i)
   sort(h)
   return t
 end
-function player:chii(d)
-  add(self.fuuro, {d,d,d});  
-  self.hand.st += 15
-  self:del(1)
-  self:del(2)
-  sort(self.hand)
+function player:chii(c)
+  local shuntsu = {c,c+1,c+2}
+  add(self.fuuro, shuntsu);  
+  self:dels(shuntsu)
 end
 function player:pon(d)
-  add(self.fuuro, {d,d,d});
-  self.hand.st += 15
-  self:del(1)
-  self:del(2)
-  sort(self.hand)
+  local koutsu = {self.hand[1],self.hand[2],self.hand[3]}
+  --local koutsu = {d,d,d}
+  add(self.fuuro, koutsu);  
+  self:dels(koutsu)  
 end
+menu = {}
+function menu:new(o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self    
+  o.x0 = 0
+  o.y1 = 0
+  o.w = 0
+  o.active_index = 0
+  return o
+end
+function menu:update()
+  if btnp(2) then
+    if self.active_index > 1 then 
+      sfx(0)
+      self.active_index -= 1
+    end
+  end
 
+  if btnp(3) then
+    if self.active_index < #p1.options then 
+      sfx(0)
+      self.active_index += 1
+    end        
+  end    
+end
 -->8
 function _draw()
   active_scene:draw()  
-  --drawlogo()
-  --fadeperc=0
-  --checkfade()
-  --★
-  --cursor(4,4)
-  --color(8)
+end
+function menu:draw()
+  if #self > 0 then      
+    local x0 = self.x0
+    local y1 = self.y1
+    local x1 = x0 + self.w
+    local y0 = y1-6*#self-6
+    rectfill(x0,y0,x1,y0,0)
+    rect(x0,y0,x1,y1,6)
+    x0 += 4
+    y0 += 4
+    for i=1,#self do
+      print(self[i].text, x0+6, y0)
+      if i==self.active_index then
+        spr(255,x0+sin(time()),y0)
+      end
+      y0 += 6
+    end
+  end  
 end
 -->8
 -- Agari Algorithm
