@@ -1,6 +1,12 @@
 pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
+
+function debug(t)
+  start_scene.root.text = t
+  active_scene = start_scene
+end
+
 function _init()
   start_scene = scene:new()
   game_scene = scene:new()    
@@ -25,18 +31,31 @@ function _init()
     local p2 = player:new()
     hill.i = 1
     p1:init(hill)
-    p2:init(hill)
+    p2:init(hill)    
     p1.hand.draw = function(self) 
       for i=1,#self do
-        suit, order = parse_tile(self[i])        
-        print(order,10+4*i,100,7)
-        print(suit,10+4*i,100+6,7)      
+        if not(self.active and self.active_index == i and not self.flashing) then          
+          suit, order = parse_tile(self[i])        
+          local o = 0
+          if i == 14 then 
+            o += 2
+          end
+          print(order,10+4*i+o,100,7)
+          print(suit,10+4*i+o,100+6,7)
+        end
       end      
     end    
-    p2.hand.draw = function(self)
+    p2.hand.draw = function(self)          
       for i=1,#self do
-        print('-',10+4*i,10)
+        local o = 0
+        if i == 14 then 
+          o += 2
+        end
+        print('-',10+4*i+o,10)
       end
+    end
+    p1.hand.twinkle = function(self)
+      self.flashing = not self.flashing
     end
     self.children = {}
     add(self.children, p1.hand)
@@ -44,13 +63,34 @@ function _init()
 
     self.player_turn = function(self)
       p1:draw_a_tile()
+      p1.hand.active = true
+      p1.hand.active_index = 14
+      p1.hand.flashing = true            
+      game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
       self.update = self.player_select_tile_to_discard    
     end
 
-    self.player_select_tile_to_discard = function(self)
+    self.player_select_tile_to_discard = function(self)      
+
       if btn(0) then
+        if p1.hand.active_index > 1 then 
+          sfx(0)
+          p1.hand.active_index -= 1
+        end
+      end
+
+      if btn(1) then
+        if p1.hand.active_index < #p1.hand then 
+          sfx(0)
+          p1.hand.active_index += 1
+        end
+      end      
+
+      if btn(4) then
         sfx(0)
-        p1:discard(14)
+        game_scene.animations.twinkle = nil
+        p1:discard(p1.hand.active_index)
+        p1.hand.active = false
         self.update = self.cpu_turn
       end
     end
@@ -61,7 +101,7 @@ function _init()
     end
 
     self.cpu_select_tile_to_discard = function(self)
-      if btn(0) then
+      if btn(4) then
         sfx(0)
         p2:discard(14)
         self.update = self.player_turn
@@ -80,19 +120,17 @@ function scene:new(o)
   setmetatable(o, self)
   self.__index = self
   self.active_layer={}
+  self.animations={}
+  self.last_scene=nil
   return o
 end
 function scene:update() --?
-  self.active_layer:update()  
-  --[[
-  for a to all(self.animations) do
-    a.timer -= 1
-    a.target.x += a.dx
-    a.target.y += a.dy
-    if a.timer == 0 then      
-    end
+  self.active_layer:update()
+  if self.animations ~= nil then 
+    for k,v in pairs(self.animations) do
+      v:update()
+    end  
   end
-  --]]
 end
 function scene:draw()
   cls()
@@ -113,6 +151,23 @@ function layer:draw()
     for c in all(self.children) do
       c:draw()
     end
+  end
+end
+twinkle = {}
+function twinkle:new(o,target,period)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self    
+  o.target = target
+  o.period = period
+  o.timer = period
+  return o
+end
+function twinkle:update()
+  self.timer -= 1
+  if self.timer <= 0 then
+    self.target:twinkle()
+    self.timer = self.period
   end
 end
 -->8
