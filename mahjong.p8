@@ -52,11 +52,11 @@ function _init()
         if not(self.active and self.active_index == i and not self.flashing) then          
           suit, order = parse_tile(self[i])        
           local o = 0
-          if i == 14 then 
+          if i==#self then 
             o += 2
           end
-          print(order,10+4*i+o,100,7)
-          print(suit,10+4*i+o,100+6,7)
+          print(order,p1.hand.st+4*i+o,100,7)
+          print(suit,p1.hand.st+4*i+o,100+6,7)
         end
       end      
     end    
@@ -66,7 +66,7 @@ function _init()
         if i == 14 then 
           o += 2
         end
-        print('-',10+4*i+o,10)
+        print('-',p2.hand.st+4*i+o,10)
       end
     end
     p1.hand.twinkle = function(self)
@@ -76,7 +76,7 @@ function _init()
     self.player_turn = function(self)
       p1:draw_a_tile()
       p1.hand.active = true
-      p1.hand.active_index = 14
+      p1.hand.active_index = #p1.hand
       p1.hand.flashing = true            
       game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
       self.update = self.player_select_tile_to_discard    
@@ -119,13 +119,13 @@ function _init()
     self.cpu_select_tile_to_discard = function(self)      
         sfx(0)
         local d = p2:discard(14)
-        if any_shuntsu(p2.count, d) then        
-          add(p1.options, "chii")          
-        end           
-        if any_koutsu(p2.count, d) then 
+        if any_shuntsu(p2.count, d, p1.options.chii) then
+          add(p1.options, "chii")
+        end
+        --if any_koutsu(p2.count, d) then           
+        if true then
           add(p1.options, "pon")
         end
-
         if #p1.options > 0 then 
           p1.options.active_index = 1
           self.update = self.naki
@@ -135,7 +135,7 @@ function _init()
 
     end
 
-    self.naki = function(self)
+    self.naki = function(self)      
       if btnp(2) then
         if p1.options.active_index > 1 then 
           sfx(0)
@@ -151,13 +151,22 @@ function _init()
       end  
 
       if btnp(4) then      
-        -- p1.options[i].apply
+        local cmd = p1.options[p1.options.active_index]
+        if cmd == 'chii' then 
+          p1:chii()
+        elseif cmd == 'pon' then
+          p1:pon()
+        end
         local t = #p1.options
         for i=1,t do --!!!
           p1.options[i] = nil
         end
-        --self.update = self.player_select_tile_to_discard
-        self.update = self.player_turn
+        p1.hand.active = true
+        p1.hand.active_index = #p1.hand
+        p1.hand.flashing = true            
+        game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+        self.update = self.player_select_tile_to_discard
+        --self.update = self.player_turn
       end
 
       if btnp(5) then
@@ -198,9 +207,27 @@ function _init()
           y0 += 6
         end
       end
-      
     end
     add(self.children, p1.options)
+    p1.fuuro.draw = function(self) 
+      if #self > 0 then
+        for i=1,#self do
+          local f={1,1,1}
+          for j=1,#f do
+            suit, order = parse_tile(f[j])        
+            print(order,-5+i*15+4*j,100,7)
+            print(suit,-5+i*15+4*j,100+6,7)
+          end          
+        end   
+      end      
+    end
+    p2.fuuro.draw = function(self) 
+      if #self > 0 then      
+      end      
+    end    
+
+    add(self.children, p1.fuuro)
+    add(self.children, p2.fuuro)
   end  
   active_scene = game_scene
   start_scene.active_layer = start_scene.root  
@@ -278,11 +305,24 @@ function player:new(o)
   return o
 end
 function player:add(t)
-  add(self.hand, t)
-  if self.count[t] == nil then 
-    self.count[t] = 0
+  local h = self.hand
+  local c = self.count
+  add(h, t)
+  if c[t] == nil then 
+    c[t] = 0
   end 
-  self.count[t] += 1  
+  c[t] += 1
+end
+function player:del(i)
+  local h = self.hand
+  local c = self.count
+  local t = h[i]
+  h[i] = h[#h]
+  h[#h] = nil
+  c[t] -= 1
+  if c[t] == 0 then
+    c[t] = nil
+  end  
 end
 function player:init(hill)   
   for i=1,13 do
@@ -291,6 +331,7 @@ function player:init(hill)
     hill.i+=1
   end    
   self.hill = hill
+  self.hand.st = 10
   sort(self.hand)
 end
 function player:draw_a_tile()
@@ -303,15 +344,25 @@ function player:discard(i)
   local h = self.hand
   local t = h[i]
   add(self.river, t)
-  self.count[t] -= 1
-  if self.count[t] == 0 then
-    self.count[t] = nil
-  end
-  h[i] = h[#h]
-  h[#h] = nil
+  self:del(i)
   sort(h)
   return t
 end
+function player:chii(d)
+  add(self.fuuro, {d,d,d});  
+  self.hand.st += 15
+  self:del(1)
+  self:del(2)
+  sort(self.hand)
+end
+function player:pon(d)
+  add(self.fuuro, {d,d,d});
+  self.hand.st += 15
+  self:del(1)
+  self:del(2)
+  sort(self.hand)
+end
+
 -->8
 function _draw()
   active_scene:draw()  
@@ -338,17 +389,25 @@ function any_shuntsu_start_with(c, h)
   return false
 end
 
-function any_shuntsu(c, h)
+function any_shuntsu(c, h, options)
   if h > 27 then
     return false
   end
-  if (any_shuntsu_start_with(c, h)) return true 
+  options = {}
+  if (any_shuntsu_start_with(c, h)) then 
+    add(options, h)
+  end
   if (h ~= 1 and h ~= 10 and h ~= 19) then
-    if (any_shuntsu_start_with(c, h-1)) return true 
+    if (any_shuntsu_start_with(c, h-1)) then 
+      add(options, h-1)      
+    end 
     if (h ~= 2 and h ~= 11 and h ~= 20) then
-      if (any_shuntsu_start_with(c, h-2)) return true 
+      if (any_shuntsu_start_with(c, h-2)) then 
+        add(options, h-2)
+      end
     end
-  end  
+  end
+  return #options > 0
 end
 
 function any_koutsu(c, h)
