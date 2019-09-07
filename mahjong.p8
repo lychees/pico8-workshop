@@ -13,7 +13,7 @@ wall_starting_point=1
 current_player = 0 -- 0 thru 3
 first_dealer = 0
 next_tile_in_wall=1
-draw_animation_length=1 --frames
+draw_animation_length=24 --frames
 
 --fix sprite transparency
 palt(0, false)
@@ -35,6 +35,8 @@ function tile:new(o,suit,value,base_sprite_id)
   self.dora_indicator_3=false
   self.dora_indicator_4=false
   self.raw_index=0
+  self.x=0
+  self.y=0
   return o
 end
 
@@ -332,8 +334,9 @@ player={}
 
 function sort_hand(hand)
  for i=1,#hand do
-    local j = i    
-    while j > 1 and hand[j-1].raw_index > hand[j].raw_index do
+    local j = i
+    --while j > 1 and (hand[j-1].suit > hand[j].suit or (hand[j-1].suit == hand[j].suit and hand[j-1].value > hand[j].value)) do
+    while j > 1 and hand[j-1].raw_index < hand[j].raw_index do
       hand[j],hand[j-1] = hand[j-1],hand[j]
       j = j - 1
     end
@@ -732,8 +735,60 @@ end
 
 --begin game
 count = {}
+fuuro = {}
 divide_result = {}
 divide_results = {}
+
+function debug()
+  flip()
+  options = {"ok"}
+  claim()
+end
+
+function chii()
+end
+
+function pon(h)  
+  local c = 0
+  local x = active_tile.x
+  local y = active_tile.y
+  --local xx, yy = get_coords_in_hand(player_hand, 14-c)
+  local xx, yy = get_coords_in_hand(player_hand, #player_hand+1)
+  --xx += 10
+  move_tile(active_tile:get_flat_id(),x,y,xx,yy)  
+  for i=1,#left_hand do 
+    if left_hand[i] == active_tile then
+      remove_from_hand(left_hand, i)
+    end
+  end
+  for i=1,#right_hand do 
+    if right_hand[i] == active_tile then
+      remove_from_hand(right_hand, i)
+    end
+  end
+  for i=1,#top_hand do 
+    if top_hand[i] == active_tile then
+      remove_from_hand(top_hand, i)
+    end
+  end
+  debug()
+  --[[
+  c += 1
+  for i=1,#player_hand do
+    if player_hand[i] ~= nil and player_hand[i].raw_index == h then
+      temptile=remove_from_hand(player_hand, i)
+      count[player_hand[i].raw_index] -= 1            
+      x, y = get_coords_in_hand(player_hand,i)
+      xx, yy = get_coords_in_hand(player_hand,14-c)
+      xx += 10
+      c += 1
+      move_tile(player_hand[i]:get_flat_id(),x,y,xx,yy)
+      if (c == 3) break;
+    end
+  end
+  sort_hand(player_hand)
+  --]]
+end
 
 function any_shuntsu_start_with(h) 
   if h == nil then
@@ -770,7 +825,6 @@ end
 
 function shuntsu_dfs(h)
   local ok = false
-
   if h == nil then 
     return false
   end
@@ -791,7 +845,7 @@ function koutsu_dfs(h)
   if any_koutsu(h) then    
     count[h] -= 3
     add(divide_result, {h,h,h})
-    faces_dfs(count)
+    mentsu_dfs(count)
     del(divide_result, {h,h,h})
     count[h] += 3
   end 
@@ -831,7 +885,13 @@ end
 function sub_claim(type, options)  
 end
 
-function claim(options)
+options = {}
+active_tile = nil
+function claim()
+  if options==nil or #options==0 then
+    return
+  end
+
   cls()
   sfx(1)  
   local selection = 1
@@ -844,7 +904,7 @@ function claim(options)
     for i=1, #options do
       print(options[i], 100, 116-8*i, 0)
     end
-    spr(90, 90, 116-8*selection-2)    
+    spr(90, 90, 116-8*selection-2)
     if btnp(2) then
       if selection < #options then
         selection = selection + 1
@@ -856,7 +916,13 @@ function claim(options)
         sfx(7)
       end
     elseif btnp(4) then
-      sfx(8)
+      sfx(9)
+      if options[selection] == "pon" then 
+        pon(active_tile.raw_index)
+      elseif options[selection] == "chii" then 
+        chii() 
+      elseif options[selection] == "riichi" then 
+      end
       break
     elseif btnp(5) then 
       sfx(8)
@@ -864,6 +930,7 @@ function claim(options)
     end
     flip()
   end
+  options = {}
 end
 
 function your_turn()
@@ -882,9 +949,11 @@ function your_turn()
   local selection, offset, discard_idx = 14, 2, nil
   flashing=true
   clip(0,110,127,18)
-  if is_agari(player_hand) then 
-    claim("tsumo")
+  active_tile = temptile
+  if is_agari(player_hand) then
+    add(options, "tsumo")
   end
+  claim()
   while not discard_idx do
     if selection == 14 then
       offset = 2
@@ -935,13 +1004,17 @@ function my_turn()
   -- wait(6)
   local discard_idx=1+flr(rnd(#current_hand))
   temptile=remove_from_hand(current_hand, discard_idx)
-  if (count[temptile.raw_index] == nil) count[temptile.raw_index] = 0
-  count[temptile.raw_index] += 1
-  local options = {}  
+  temptile.x = x
+  temptile.y = y
+  if count[temptile.raw_index] == nil then 
+    count[temptile.raw_index] = 0
+  end
+  count[temptile.raw_index] += 1  
   if any_shuntsu(temptile.raw_index) then
     add(options, "chii")
   end
-  if any_koutsu(temptile.raw_index) then
+  --if any_koutsu(temptile.raw_index) then
+  if true then
     add(options, "pon")
   end
   count[temptile.raw_index] -= 1
@@ -949,10 +1022,11 @@ function my_turn()
   x,y=get_coords_in_hand(current_hand,discard_idx)
   target_x,target_y=get_coords_in_pile(current_pile,#current_pile+1)
   move_tile(temptile:discard_sprite(current_player),x,y,target_x,target_y)
-  add(current_pile, temptile)
-  if #options > 0 then
-    claim(options)
-  end  
+  add(current_pile, temptile)  
+  temptile.x = target_x 
+  temptile.y = target_y
+  active_tile = temptile
+  claim()
 end
 
 function _init()  
