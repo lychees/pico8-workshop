@@ -1,6 +1,34 @@
 pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
+function _init()
+  start_scene = scene:new()
+  game_scene = scene:new()    
+  start_scene.root = layer:new({text="start",x=20,y=20})
+  game_scene.root = layer:new({text="game",x=20,y=30})      
+  start_scene.root:update = function()
+    if btn(0) then
+      sfx(0)
+      active_scene = game_scene
+    end
+  end
+  game_scene.root:update = function()
+    hill = {}
+    for i=1,34 do
+      for j=1,4 do
+        add(hill, i)
+      end
+    end
+    random_shuffle(hill)
+    if btn(0) then
+      sfx(0)
+      active_scene = start_scene
+    end
+  end  
+  active_scene = game_scene
+  start_scene.active_layer = start_scene.root  
+  game_scene.active_layer = game_scene.root  
+end
 scene = {}
 function scene:new(o)
   o = o or {}
@@ -33,27 +61,7 @@ function layer:draw()
     end
   end
 end
-function _init()
-  start_scene = scene:new()
-  game_scene = scene:new()    
-  start_scene.root = layer:new({text="start",x=20,y=20})
-  game_scene.root = layer:new({text="game",x=20,y=30})      
-  start_scene.root.update = function()    
-    if btn(0) then
-      sfx(0)
-      active_scene = game_scene
-    end
-  end
-  game_scene.root.update = function()    
-    if btn(0) then
-      sfx(0)
-      active_scene = start_scene
-    end
-  end  
-  active_scene = game_scene
-  start_scene.active_layer = start_scene.root  
-  game_scene.active_layer = game_scene.root  
-end
+
 -->8
 function _update()
   active_scene:update()
@@ -61,6 +69,10 @@ end
 -->8
 function _draw()
   active_scene:draw()
+end
+-->8
+function random_shuffle(a)
+  
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
