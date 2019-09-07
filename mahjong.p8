@@ -31,7 +31,22 @@ function _init()
     local p2 = player:new()
     hill.i = 1
     p1:init(hill)
-    p2:init(hill)    
+    p2:init(hill)
+    
+    p1.river.draw = function(self)
+      for i=1,#self do
+        suit, order = parse_tile(self[i])
+        print(order,10+4*i+o,80,7)
+        print(suit,10+4*i+o,80+6,7)
+      end
+    end
+    p2.river.draw = function(self)
+      for i=1,#self do
+        suit, order = parse_tile(self[i])
+        print(order,10+4*i+o,30,7)
+        print(suit,10+4*i+o,30+6,7)
+      end
+    end    
     p1.hand.draw = function(self) 
       for i=1,#self do
         if not(self.active and self.active_index == i and not self.flashing) then          
@@ -57,9 +72,6 @@ function _init()
     p1.hand.twinkle = function(self)
       self.flashing = not self.flashing
     end
-    self.children = {}
-    add(self.children, p1.hand)
-    add(self.children, p2.hand)
 
     self.player_turn = function(self)
       p1:draw_a_tile()
@@ -71,7 +83,6 @@ function _init()
     end
 
     self.player_select_tile_to_discard = function(self)      
-
       if btn(0) then
         if p1.hand.active_index > 1 then 
           sfx(0)
@@ -109,6 +120,12 @@ function _init()
     end
 
     self.update = self.player_turn 
+
+    self.children = {}
+    add(self.children, p1.hand)
+    add(self.children, p2.hand)
+    add(self.children, p1.river)
+    add(self.children, p2.river)
   end  
   active_scene = game_scene
   start_scene.active_layer = start_scene.root  
@@ -201,6 +218,7 @@ end
 function player:discard(i)
   local h = self.hand
   local t = h[i]
+  add(self.river, t)
   h[i] = h[#h]
   h[#h] = nil
   sort(h)
