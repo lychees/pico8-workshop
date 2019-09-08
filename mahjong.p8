@@ -7,9 +7,13 @@ function debug(t)
   active_scene = start_scene
 end
 
-function _init()    
+function _init()
   start_scene = scene:new()
   game_scene = scene:new()    
+  
+  active_scene = game_scene
+  -- active_scene = start_scene
+
   start_scene.root = layer:new({text="start",x=20,y=20})
   game_scene.root = layer:new({text="game",x=-20,y=30})      
   start_scene.root.update = function()
@@ -35,16 +39,18 @@ function _init()
     
     p1.river.draw = function(self)
       for i=1,#self do
-        suit, order = parse_tile(self[i])
-        print(order,10+4*i,80,7)
-        print(suit,10+4*i,80+6,7)
+        local row, col = flr((i-1) / 24), (i-1) % 24 + 1
+        local suit, order = parse_tile(self[i])        
+        print(order,10+4*col,80-14*row,7)
+        print(suit,10+4*col,80+6-14*row,7)
       end
     end
     p2.river.draw = function(self)
       for i=1,#self do
-        suit, order = parse_tile(self[i])
-        print(order,10+4*i,30,7)
-        print(suit,10+4*i,30+6,7)
+        local row, col = flr((i-1) / 24), (i-1) % 24 + 1
+        local suit, order = parse_tile(self[i])
+        print(order,10+4*col,30+14*row,7)
+        print(suit,10+4*col,30+6+14*row,7)
       end
     end    
     p1.hand.draw = function(self) 
@@ -73,13 +79,194 @@ function _init()
       self.flashing = not self.flashing
     end
 
+    self.sub_claim = function(self)
+      p1.sub_options:update()
+      if btnp(4) then 
+        --[[      
+        sfx(0)
+        local op = p1.options[p1.options.active_index]
+        local opp = p1.sub_options[p1.sub_options.active_index]        
+        p1:add(p1.options.target)
+        sort(p1.hand)
+        op.cmd(p1, opp.param)
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end
+        local t = #p1.options
+        for i=1,t do --!!!
+          p1.options[i] = nil
+        end
+        p1.hand.active = true
+        p1.hand.active_index = #p1.hand
+        p1.hand.flashing = true            
+        game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+        self.update = self.player_select_tile_to_discard                
+        --]]
+      end
+
+      if btnp(5) then
+        sfx(0)
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end        
+        self.update = self.claim
+      end     
+    end
+
+    self.claim = function(self)
+      p1.options:update()
+      if btnp(4) then                 
+        local op = p1.options[p1.options.active_index]
+        if type(op.param) ~= "number" then
+          for i in all(op.param) do -- better use params
+            s, o = parse_tile(i)
+            add(p1.sub_options, 
+              {
+                text=tostr(o*1111), 
+                cmd=p1.kann, param=o
+              }
+            );
+            p1.sub_options.active_index = 1
+          end
+          self.update = self.sub_claim
+        else
+          op.cmd(p1, op.param)
+          local t = #p1.options
+          for i=1,t do --!!!
+            p1.options[i] = nil
+          end
+          p1.hand.active = true
+          p1.hand.active_index = #p1.hand
+          p1.hand.flashing = true            
+          game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+          self.update = self.player_select_tile_to_discard
+        end
+      end
+
+      if btnp(5) then
+        sfx(0)
+        -- p1.options = {}
+        local t = #p1.options
+        for i=1,t do --!!!
+          p1.options[i] = nil
+        end
+        self.update = self.player_select_tile_to_discard
+      end       
+    end
+
+    self.sub_naki = function(self)
+      p1.sub_options:update()
+      if btnp(4) then 
+        --[[
+        sfx(0)
+        local op = p1.options[p1.options.active_index]
+        local opp = p1.sub_options[p1.sub_options.active_index]        
+        p1:add(p1.options.target)
+        sort(p1.hand)
+        op.cmd(p1, opp.param)
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end
+        local t = #p1.options
+        for i=1,t do --!!!
+          p1.options[i] = nil
+        end
+        p1.hand.active = true
+        p1.hand.active_index = #p1.hand
+        p1.hand.flashing = true            
+        game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+        self.update = self.player_select_tile_to_discard        
+        --]]
+      end
+
+      if btnp(5) then
+        sfx(0)
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end        
+        self.update = self.naki
+      end    
+    end
+
+    self.naki = function(self)      
+      p1.options:update()
+
+      if btnp(4) then         
+        local op = p1.options[p1.options.active_index]
+        if type(op.param) ~= "number" then
+          for i in all(op.param) do -- better use params
+            s, o = parse_tile(i)
+            add(p1.sub_options, 
+              {
+                text=tostr(o*100+(o+1)*10+(o+2)), 
+                cmd=p1.chii, param=o
+              }
+            );
+            p1.sub_options.active_index = 1
+          end
+          self.update = self.sub_naki          
+        else
+          p1:add(p1.options.target)
+          sort(p1.hand)
+          op.cmd(p1,op.param)
+          local t = #p1.options
+          for i=1,t do --!!!
+            p1.options[i] = nil
+          end
+          p1.hand.active = true
+          p1.hand.active_index = #p1.hand
+          p1.hand.flashing = true            
+          game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+          self.update = self.player_select_tile_to_discard
+        end
+        --self.update = self.player_turn
+      end
+
+      if btnp(5) then
+        sfx(0)
+        -- p1.options = {}
+        local t = #p1.options
+        for i=1,t do --!!!
+          p1.options[i] = nil
+        end
+        self.update = self.player_turn
+      end      
+    end    
+
     self.player_turn = function(self)
       p1:draw_a_tile()
       p1.hand.active = true
       p1.hand.active_index = #p1.hand
       p1.hand.flashing = true            
       game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
-      self.update = self.player_select_tile_to_discard    
+      p1.divide_results = {}
+      if is_agari(p1.count, p1.divide_results) then      
+      --if true then
+        add(p1.options, {text="tsumo", cmd=p1.tsumo, param=p1.hand[#p1.hand]})
+      end
+      local kantsus = find_kantsu(p1.count)
+      --if #kantsus > 0 then
+      if true then 
+        kantsus = {1,2,9}
+        add(p1.options, {text="kan", cmd=p1.ankan, param=kantsus})
+      end
+      --[[ richii?
+      if any_koutsu(p2.count, d) then
+        --if true then
+        add(p1.options, {text="pon", cmd=p1.pon, param=d})
+      end
+      --]]
+      if #p1.options > 0 then 
+        p1.options.target = d
+        p1.options.active_index = 1
+        self.update = self.claim
+      else
+        self.update = self.player_select_tile_to_discard
+      end
     end
 
     self.player_select_tile_to_discard = function(self)            
@@ -118,15 +305,27 @@ function _init()
         sfx(0)
         local d = p2:discard(14)
         local chiis = {}
-        --if any_shuntsu(p2.count, d, chiis) then
-        if true then
-          --add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
-          add(p1.options, {text="chii", cmd=p1.chii, param={1,2,3}})
+        if p1.count[d] == nil then 
+          p1.count[d] = 0
+        end 
+        p1.count[d] += 1
+        if any_shuntsu(p1.count, d, chiis) then
+          --if true then
+          if (#chiis == 1) chiis = chiis[1]
+          add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
         end
-        if any_koutsu(p2.count, d) then
-        --if true then
+        if any_koutsu(p1.count, d) then
+          --if true then
           add(p1.options, {text="pon", cmd=p1.pon, param=d})
         end
+        if any_kantsu(p1.count, d) then
+        --if true then
+          add(p1.options, {text="kan", cmd=p1.daiminkan, param=d})
+        end
+        p1.count[d] -= 1
+        if p1.count[d] == 0 then 
+          p1.count[d] = nil
+        end 
         if #p1.options > 0 then 
           p1.options.target = d
           p1.options.active_index = 1
@@ -134,86 +333,6 @@ function _init()
         else
           self.update = self.player_turn      
         end
-
-    end
-
-    self.sub_naki = function(self)
-      p1.sub_options:update()
-      local op = p1.options[p1.options.active_index]
-      if btnp(4) then 
-        --self.update = self.player_turn
-        p1:add(p1.options.target)
-        sort(p1.hand)
-        op.cmd(p1, op.param[p1.sub_options.active_index])        
-        local t = #p1.sub_options
-        for i=1,t do --!!!
-          p1.sub_options[i] = nil
-        end
-        local t = #p1.options
-        for i=1,t do --!!!
-          p1.options[i] = nil
-        end        
-        p1.hand.active = true
-        p1.hand.active_index = #p1.hand
-        p1.hand.flashing = true            
-        game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
-        self.update = self.player_select_tile_to_discard        
-      end
-
-      if btnp(5) then
-        sfx(0)
-        local t = #p1.sub_options
-        for i=1,t do --!!!
-          p1.sub_options[i] = nil
-        end        
-        self.update = self.naki
-      end    
-    end
-
-    self.naki = function(self)      
-      p1.options:update()
-
-      if btnp(4) then         
-        
-        local op = p1.options[p1.options.active_index]
-        if type(op.param) ~= "number" then
-          for i in all(op.param) do -- better use params
-            s, o = parse_tile(i)
-            add(p1.sub_options, 
-              {
-                text=tostr(o*100+(o+1)*10+(o+2)), 
-                cmd=p1.chii, param=o
-              }
-            );
-            p1.sub_options.active_index = 1
-          end
-          self.update = self.sub_naki          
-        else
-          p1:add(p1.options.target)
-          sort(p1.hand)
-          op.cmd(p1, op.param)
-          local t = #p1.options
-          for i=1,t do --!!!
-            p1.options[i] = nil
-          end
-          p1.hand.active = true
-          p1.hand.active_index = #p1.hand
-          p1.hand.flashing = true            
-          game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
-          self.update = self.player_select_tile_to_discard
-        end
-        --self.update = self.player_turn
-      end
-
-      if btnp(5) then
-        sfx(0)
-        -- p1.options = {}
-        local t = #p1.options
-        for i=1,t do --!!!
-          p1.options[i] = nil
-        end
-        self.update = self.player_turn
-      end      
     end
 
     self.update = self.player_turn 
@@ -239,11 +358,20 @@ function _init()
       if #self > 0 then
         for i=1,#self do
           local f=self[i]
-          for j=1,#f do
-            suit, order = parse_tile(f[j])        
-            print(order,-5+i*15+4*j,100,7)
-            print(suit,-5+i*15+4*j,100+6,7)
-          end          
+          if (#f == 3) then
+            for j=1,3 do
+              suit, order = parse_tile(f[j])        
+              print(order,-5+i*15+4*j,100,7)
+              print(suit,-5+i*15+4*j,100+6,7)
+            end          
+          else            
+            local suit, order = parse_tile(f[1])
+            for j=1,3 do              
+              print(order,-5+i*15+4*j,100,7)
+              print(suit,-5+i*15+4*j,100+6,7)
+            end          
+            print(order,-5+i*15+4*2,100-6,7)
+          end
         end   
       end      
     end
@@ -253,9 +381,8 @@ function _init()
     end
     add(self.children, p1.fuuro)
     add(self.children, p2.fuuro)
-  end  
-  active_scene = game_scene
-  start_scene.active_layer = start_scene.root  
+  end    
+  start_scene.active_layer = start_scene.root
   game_scene.active_layer = game_scene.root  
 end
 scene = {}
@@ -278,6 +405,7 @@ function scene:update()
 end
 function scene:draw()
   cls()
+  rect(0,0,127,127,1)
   self.root:draw()
 end
 layer = {}
@@ -389,17 +517,38 @@ function player:discard(i)
   sort(h)
   return t
 end
-function player:chii(c)
-  local shuntsu = {self.hand[1],self.hand[2],self.hand[3]}
-  --local shuntsu = {c,c+1,c+2}
+function player.chii(self, c)
+  --local shuntsu = {self.hand[1],self.hand[2],self.hand[3]}
+  local shuntsu = {c,c+1,c+2}
   add(self.fuuro, shuntsu);  
   self:dels(shuntsu)
 end
 function player:pon(d)
-  local koutsu = {self.hand[1],self.hand[2],self.hand[3]}
-  --local koutsu = {d,d,d}
+  --local koutsu = {self.hand[1],self.hand[2],self.hand[3]}
+  local koutsu = {d,d,d}
   add(self.fuuro, koutsu);  
   self:dels(koutsu)  
+end
+function player:daiminkan(d)
+  local kantsu = {d,d,d,d}
+  kantsu.type = daiminkan
+  add(self.fuuro, kantsu);  
+  self:dels(kantsu)
+end
+function player:shouminkan(d)  
+end 
+function player:ankan(d)
+  local kantsu = {d,d,d,d}
+  kantsu.type = ankan
+  add(self.fuuro, kantsu);  
+  self:dels(kantsu)
+end
+function player:agari()
+end
+function player:tsumo()
+  active_scene = start_scene
+end
+function player:ron()
 end
 menu = {}
 function menu:new(o)
@@ -457,25 +606,21 @@ function menu:draw()
 end
 -->8
 -- Agari Algorithm
-divide_result = {}
-divide_results = {}
-function any_shuntsu_start_with(c, h)   
+function any_shuntsu_start_with(c, h)      
   if c[h] == nil or c[h+1] == nil or c[h+2] == nil then 
-    return false;
+    return false
   end
   for i=0,2 do
     if i*9+1 <= h and h <= i*9+7 then
       return true      
     end
   end
-  return false
 end
 
 function any_shuntsu(c, h, options)
   if h > 27 then
     return false
   end
-  options = {}
   if (any_shuntsu_start_with(c, h)) then 
     add(options, h)
   end
@@ -489,68 +634,82 @@ function any_shuntsu(c, h, options)
       end
     end
   end
+  --add(options, h)
   return #options > 0
 end
-
 function any_koutsu(c, h)
   if c[h] == nil then 
     return false 
   end 
   return c[h] >= 3
 end
-
-function shuntsu_dfs(h)
-  local ok = false
-
-  if h == nil then 
-    return false
-  end
-  if any_shuntsu_start_with(h) then
-    count[h] -= 1
-    count[h+1] -= 1
-    count[h+2] -= 1
-    add(divide_result, {h,h+1,h+2})
-    mentsu_dfs(count, h)
-    del(divide_result, {h,h+1,h+2})
-    count[h+2] += 1
-    count[h+1] += 1
-    count[h] += 1
-  end
-end
-
-function koutsu_dfs(h)
-  if any_koutsu(h) then    
-    count[h] -= 3
-    add(divide_result, {h,h,h})
-    faces_dfs(count)
-    del(divide_result, {h,h,h})
-    count[h] += 3
+function any_kantsu(c, h)
+  if c[h] == nil then 
+    return false 
   end 
+  return c[h] >= 4
 end
+function find_kantsu(c)
+  local z = {}
+  for i,v in pairs(c) do
+    if v >= 4 then
+      add(z, i)
+    end
+  end 
+  return z
+end
+function is_agari(c, divide_results)  
+  local divide_result = {}
+  function shuntsu_dfs(h)
+    local ok = false
 
-function mentsu_dfs()  
-  for i, v in pairs(count) do     
-    if v >= 1 then
-      koutsu_dfs(i)
-      shuntsu_dfs(i)
-      return
+    if h == nil then 
+      return false
+    end
+    if any_shuntsu_start_with(c, h) then
+      c[h] -= 1
+      c[h+1] -= 1
+      c[h+2] -= 1
+      add(divide_result, {h,h+1,h+2})
+      mentsu_dfs()
+      del(divide_result, {h,h+1,h+2})
+      c[h+2] += 1
+      c[h+1] += 1
+      c[h] += 1
     end
   end
-  -- Succuess
-  add(divide_results, divide_results)
-end
 
-function is_agari()
-  divide_results = {}  
-  divide_result = {}
+  function koutsu_dfs(h)
+    if any_koutsu(c, h) then    
+      c[h] -= 3
+      add(divide_result, {h,h,h})
+      mentsu_dfs()
+      del(divide_result, {h,h,h})
+      c[h] += 3
+    end 
+  end
+
+  function mentsu_dfs()  
+    for i, v in pairs(c) do     
+      if v >= 1 then
+        koutsu_dfs(i)
+        shuntsu_dfs(i)
+        return
+      end
+    end
+    add(divide_results, divide_results)
+  end
+
   -- jantou, 11  
-  for i, v in pairs(count) do 
+  for i, v in pairs(c) do    
     if v >= 2 then
-      v -= 2
-      add(divide_result, {v,v})
-      mentsu_dfs() 
-      del(divide_result, {v,v})
-      v += 2
+      if (not(is_jihai(i) and v > 2)) then 
+        v -= 2
+        add(divide_result, {v,v})
+        mentsu_dfs(c, divide_results) 
+        del(divide_result, {v,v})
+        v += 2
+      end
     end
   end
   -- return #divide_results > 0
@@ -585,6 +744,9 @@ function parse_tile(x)
   x -= 27
   local s = {"e","s","w","n","w","f","z"}  
   return 'z', s[x]
+end
+function is_jihai(x)
+  return x > 27
 end
 -->8
 -- UI stuff
