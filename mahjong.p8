@@ -23,7 +23,7 @@ function _init()
     end
   end
   game_scene.root.update = function(self)
-    local hill = {1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5}
+    local hill = {1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,9}
     local p1 = player:new()
     local p2 = player:new()
 
@@ -171,7 +171,6 @@ function _init()
     self.sub_naki = function(self)
       p1.sub_options:update()
       if btnp(4) then
-        --[[
         sfx(0)
         local op = p1.options[p1.options.active_index]
         local opp = p1.sub_options[p1.sub_options.active_index]
@@ -191,7 +190,6 @@ function _init()
         p1.hand.flashing = true
         game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
         self.update = self.player_select_tile_to_discard
-        --]]
       end
 
       if btnp(5) then
@@ -263,11 +261,10 @@ function _init()
       if #kantsus > 0 then
         add(p1.options, {text="kan", cmd=p1.ankan, param=kantsus})
       end
-      --[[ richii?
       if any_koutsu(p2.count, d) then
-        --if true then
         add(p1.options, {text="pon", cmd=p1.pon, param=d})
       end
+      --[[ richii?
       --]]
       if #p1.options > 0 then
         p1.options.target = d
@@ -458,9 +455,10 @@ function player:new(o)
   setmetatable(o, self)
   self.__index = self
   o.hand = {}
+  o.count = {}
   o.river = {}
   o.fuuro = {}
-  o.count = {}
+  o.ankans = {}
   return o
 end
 function player:add(t)
@@ -635,18 +633,18 @@ function any_shuntsu(c, h, options)
   if h > 27 then
     return false
   end
-  if (any_shuntsu_start_with(c, h)) then
-    add(options, h)
-  end
   if (h ~= 1 and h ~= 10 and h ~= 19) then
-    if (any_shuntsu_start_with(c, h-1)) then
-      add(options, h-1)
-    end
     if (h ~= 2 and h ~= 11 and h ~= 20) then
       if (any_shuntsu_start_with(c, h-2)) then
         add(options, h-2)
       end
     end
+    if (any_shuntsu_start_with(c, h-1)) then
+      add(options, h-1)
+    end
+  end
+  if (any_shuntsu_start_with(c, h)) then
+    add(options, h)
   end
   return #options > 0
 end
