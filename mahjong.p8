@@ -9,33 +9,48 @@ end
 
 function _init()
   start_scene = scene:new()
-  game_scene = scene:new()    
+  game_scene = scene:new()
   
   active_scene = game_scene
   -- active_scene = start_scene
 
   start_scene.root = layer:new({text="start",x=20,y=20})
-  game_scene.root = layer:new({text="game",x=-20,y=30})      
+  game_scene.root = layer:new({text="game",x=-20,y=30})
   start_scene.root.update = function()
     if btnp(0) then
       sfx(0)
       active_scene = game_scene
     end
   end
-  game_scene.root.update = function(self)
-    local hill = {}   
+  game_scene.root.update = function(self)    
+    local hill = {1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5}   
     local o = 0
-    for i=1,34 do
-      for j=1,4 do
-        add(hill, i)
-      end
-    end
-    random_shuffle(hill)
     local p1 = player:new() 
     local p2 = player:new()
-    hill.i = 1
-    p1:init(hill)
-    p2:init(hill)
+    
+    hill.init = function(self)
+      local c = {}
+      for i=1,34 do
+        c[i] = 4
+      end
+      for h in all(self) do
+        c[h] -= 1
+      end
+      local r = {}
+      for i,v in pairs(c) do 
+        for _=1,v do 
+          add(self,i)
+        end
+      end
+      random_shuffle(r)
+      for i in all(r) do
+        add(self,i)
+      end      
+      self.i = 1
+      p1:init(self)
+      p2:init(self)      
+    end 
+    hill:init()
     
     p1.river.draw = function(self)
       for i=1,#self do
@@ -249,9 +264,7 @@ function _init()
         add(p1.options, {text="tsumo", cmd=p1.tsumo, param=p1.hand[#p1.hand]})
       end
       local kantsus = find_kantsu(p1.count)
-      --if #kantsus > 0 then
-      if true then 
-        kantsus = {1,2,9}
+      if #kantsus > 0 then
         add(p1.options, {text="kan", cmd=p1.ankan, param=kantsus})
       end
       --[[ richii?
