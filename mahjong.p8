@@ -24,7 +24,6 @@ function _init()
   end
   game_scene.root.update = function(self)    
     local hill = {1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5}   
-    local o = 0
     local p1 = player:new() 
     local p2 = player:new()
     
@@ -96,12 +95,11 @@ function _init()
 
     self.sub_claim = function(self)
       p1.sub_options:update()
-      if btnp(4) then 
-        --[[      
+      if btnp(4) then    
         sfx(0)
         local op = p1.options[p1.options.active_index]
         local opp = p1.sub_options[p1.sub_options.active_index]        
-        p1:add(p1.options.target)
+        --p1:add(p1.options.target)
         sort(p1.hand)
         op.cmd(p1, opp.param)
         local t = #p1.sub_options
@@ -117,7 +115,6 @@ function _init()
         p1.hand.flashing = true            
         game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
         self.update = self.player_select_tile_to_discard                
-        --]]
       end
 
       if btnp(5) then
@@ -492,18 +489,28 @@ function player:del(i)
 end
 function player:dels(m)  
   local h = self.hand
-  local mi = 1
+  --[[
+  local mi = 1    
   for i=1,#h do
     if h[i] == m[mi] then
       self:del(i)
-      i -= 1
+      i = 0
       mi += 1
       if mi > #m then 
         break
       end
     end
   end 
-  h.st += 15  
+  --]]
+  for mi=1,#m do
+    for i=1,#h do 
+      if h[i] == m[mi] then 
+        self:del(i)        
+        break
+      end
+    end
+  end
+  h.st += 15
   sort(h)
 end
 function player:init(hill)   
@@ -710,7 +717,7 @@ function is_agari(c, divide_results)
         return
       end
     end
-    add(divide_results, divide_results)
+    add(divide_results, divide_result)
   end
 
   -- jantou, 11  
@@ -725,10 +732,7 @@ function is_agari(c, divide_results)
       end
     end
   end
-  -- return #divide_results > 0
-  if #divide_results > 0 then
-    return true
-  end
+  return #divide_results > 0  
 end
 
 -->8
