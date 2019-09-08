@@ -7,7 +7,7 @@ function debug(t)
   active_scene = start_scene
 end
 
-function _init()  
+function _init()    
   start_scene = scene:new()
   game_scene = scene:new()    
   start_scene.root = layer:new({text="start",x=20,y=20})
@@ -82,9 +82,7 @@ function _init()
       self.update = self.player_select_tile_to_discard    
     end
 
-    self.player_select_tile_to_discard = function(self)      
-      --addwind(84,64,30,30,{"chii","pon","kan"})      
-      --showinv()
+    self.player_select_tile_to_discard = function(self)            
       if btnp(0) then
         if p1.hand.active_index > 1 then 
           sfx(0)
@@ -120,11 +118,13 @@ function _init()
         sfx(0)
         local d = p2:discard(14)
         local chiis = {}
-        if any_shuntsu(p2.count, d, chiis) then
-          add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
-        end
-        --if any_koutsu(p2.count, d) then
+        --if any_shuntsu(p2.count, d, chiis) then
         if true then
+          --add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
+          add(p1.options, {text="chii", cmd=p1.chii, param={1,2,3}})
+        end
+        if any_koutsu(p2.count, d) then
+        --if true then
           add(p1.options, {text="pon", cmd=p1.pon, param=d})
         end
         if #p1.options > 0 then 
@@ -137,35 +137,71 @@ function _init()
 
     end
 
-    self.naki = function(self)      
-      if btnp(2) then
-        if p1.options.active_index > 1 then 
-          sfx(0)
-          p1.options.active_index -= 1
-        end
-      end
-
-      if btnp(3) then
-        if p1.options.active_index < #p1.options then 
-          sfx(0)
-          p1.options.active_index += 1
-        end        
-      end  
-
+    self.sub_naki = function(self)
+      p1.sub_options:update()
+      local op = p1.options[p1.options.active_index]
       if btnp(4) then 
+        --self.update = self.player_turn
         p1:add(p1.options.target)
         sort(p1.hand)
-        local op = p1.options[p1.options.active_index]
-        op.cmd(p1, op.param)
+        op.cmd(p1, op.param[p1.sub_options.active_index])        
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end
         local t = #p1.options
         for i=1,t do --!!!
           p1.options[i] = nil
-        end
+        end        
         p1.hand.active = true
         p1.hand.active_index = #p1.hand
         p1.hand.flashing = true            
         game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
-        self.update = self.player_select_tile_to_discard
+        self.update = self.player_select_tile_to_discard        
+      end
+
+      if btnp(5) then
+        sfx(0)
+        local t = #p1.sub_options
+        for i=1,t do --!!!
+          p1.sub_options[i] = nil
+        end        
+        self.update = self.naki
+      end    
+    end
+
+    self.naki = function(self)      
+      p1.options:update()
+
+      if btnp(4) then         
+        
+        local op = p1.options[p1.options.active_index]
+        if type(op.param) ~= "number" then
+          for i in all(op.param) do -- better use params
+            s, o = parse_tile(i)
+            add(p1.sub_options, 
+              {
+                text=tostr(o*100+(o+1)*10+(o+2)), 
+                cmd=p1.chii, param=o
+              }
+            );
+            p1.sub_options.active_index = 1
+          end
+          self.update = self.sub_naki          
+        else
+          p1:add(p1.options.target)
+          sort(p1.hand)
+          op.cmd(p1, op.param)
+          local t = #p1.options
+          for i=1,t do --!!!
+            p1.options[i] = nil
+          end
+          p1.hand.active = true
+          p1.hand.active_index = #p1.hand
+          p1.hand.flashing = true            
+          game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
+          self.update = self.player_select_tile_to_discard
+        end
         --self.update = self.player_turn
       end
 
@@ -187,27 +223,18 @@ function _init()
     add(self.children, p2.hand)
     add(self.children, p1.river)
     add(self.children, p2.river)
-    p1.options = {}
-    p1.options.draw = function(self)      
-      if #self > 0 then      
-        local x0 = 90        
-        local x1 = x0 + 32
-        local y1 = 120
-        local y0 = y1-6*#self-6
-        rectfill(x0,y0,x1,y0,0)
-        rect(x0,y0,x1,y1,6)
-        x0 += 4
-        y0 += 4
-        for i=1,#self do
-          print(self[i].text, x0+6, y0)
-          if i==self.active_index then
-            spr(255,x0+sin(time()),y0)
-          end
-          y0 += 6
-        end
-      end
-    end
+    p1.options = menu:new()
+    p1.options.x0 = 90
+    p1.options.y1 = 120
+    p1.options.w = 32
+    p1.sub_options = menu:new()
+    p1.sub_options.x0 = 85
+    p1.sub_options.y1 = 115
+    p1.sub_options.w = 28
+
     add(self.children, p1.options)
+    add(self.children, p1.sub_options)
+
     p1.fuuro.draw = function(self) 
       if #self > 0 then
         for i=1,#self do
@@ -363,7 +390,8 @@ function player:discard(i)
   return t
 end
 function player:chii(c)
-  local shuntsu = {c,c+1,c+2}
+  local shuntsu = {self.hand[1],self.hand[2],self.hand[3]}
+  --local shuntsu = {c,c+1,c+2}
   add(self.fuuro, shuntsu);  
   self:dels(shuntsu)
 end
@@ -392,11 +420,11 @@ function menu:update()
     end
   end
 
-  if btnp(3) then
-    if self.active_index < #p1.options then 
+  if btnp(3) then    
+    if self.active_index < #self then 
       sfx(0)
       self.active_index += 1
-    end        
+    end 
   end    
 end
 -->8
@@ -409,8 +437,13 @@ function menu:draw()
     local y1 = self.y1
     local x1 = x0 + self.w
     local y0 = y1-6*#self-6
-    rectfill(x0,y0,x1,y0,0)
+    palt(0, false)
+    --pal(6, 1)
+    rectfill(x0,y0,x1,y1,0)
+    --rectfill(x0,y0,x1,y0,0)
     rect(x0,y0,x1,y1,6)
+    palt(0, true)
+    pal()
     x0 += 4
     y0 += 4
     for i=1,#self do
