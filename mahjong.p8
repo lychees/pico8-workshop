@@ -256,8 +256,7 @@ function _init()
       p1.hand.flashing = true            
       game_scene.animations.twinkle = twinkle:new(nil,p1.hand,20)
       p1.divide_results = {}
-      if is_agari(p1.count, p1.divide_results) then      
-      --if true then
+      if is_agari(p1.count, p1.divide_results) then            
         add(p1.options, {text="tsumo", cmd=p1.tsumo, param=p1.hand[#p1.hand]})
       end
       local kantsus = find_kantsu(p1.count)
@@ -319,17 +318,14 @@ function _init()
           p1.count[d] = 0
         end 
         p1.count[d] += 1
-        if any_shuntsu(p1.count, d, chiis) then
-          --if true then
+        if any_shuntsu(p1.count, d, chiis) then          
           if (#chiis == 1) chiis = chiis[1]
           add(p1.options, {text="chii", cmd=p1.chii, param=chiis})
         end
-        if any_koutsu(p1.count, d) then
-          --if true then
+        if any_koutsu(p1.count, d) then          
           add(p1.options, {text="pon", cmd=p1.pon, param=d})
         end
-        if any_kantsu(p1.count, d) then
-        --if true then
+        if any_kantsu(p1.count, d) then        
           add(p1.options, {text="kan", cmd=p1.daiminkan, param=d})
         end
         p1.count[d] -= 1
@@ -538,13 +534,11 @@ function player:discard(i)
   return t
 end
 function player.chii(self, c)
-  --local shuntsu = {self.hand[1],self.hand[2],self.hand[3]}
   local shuntsu = {c,c+1,c+2}
   add(self.fuuro, shuntsu);  
   self:dels(shuntsu)
 end
 function player:pon(d)
-  --local koutsu = {self.hand[1],self.hand[2],self.hand[3]}
   local koutsu = {d,d,d}
   add(self.fuuro, koutsu);  
   self:dels(koutsu)  
@@ -709,7 +703,7 @@ function is_agari(c, divide_results)
     end 
   end
 
-  function mentsu_dfs()  
+  function mentsu_dfs()      
     for i, v in pairs(c) do     
       if v >= 1 then
         koutsu_dfs(i)
@@ -717,18 +711,18 @@ function is_agari(c, divide_results)
         return
       end
     end
-    add(divide_results, divide_result)
+    add(divide_results, divide_result)    
   end
 
   -- jantou, 11  
   for i, v in pairs(c) do    
     if v >= 2 then
       if (not(is_jihai(i) and v > 2)) then 
-        v -= 2
+        c[i] -= 2
         add(divide_result, {v,v})
         mentsu_dfs(c, divide_results) 
         del(divide_result, {v,v})
-        v += 2
+        c[i] += 2
       end
     end
   end
