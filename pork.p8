@@ -293,58 +293,57 @@ end
 -->8
 --draws
 function draw_game()
- cls(0)
- if fadeperc==1 then return end
- animap()
- map()
- for m in all(dmob) do
-  if sin(time()*8)>0 or m==p_mob then
-   drawmob(m)
+  cls(0)
+  if fadeperc==1 then return end
+  animap()
+  map()
+  for m in all(dmob) do
+    if sin(time()*8)>0 or m==p_mob then
+      drawmob(m)
+    end
+    m.dur-=1
+    if m.dur<=0 and m!=p_mob then
+      del(dmob,m)
+    end
   end
-  m.dur-=1
-  if m.dur<=0 and m!=p_mob then
-   del(dmob,m)
+
+  for i=#mob,1,-1 do
+    drawmob(mob[i])
   end
- end
 
- for i=#mob,1,-1 do
-  drawmob(mob[i])
- end
+  if _upd==update_throw then
+    --★
+    local tx,ty=throwtile()
+    local lx1,ly1=p_mob.x*8+3+thrdx*4,p_mob.y*8+3+thrdy*4
+    local lx2,ly2=mid(0,tx*8+3,127),mid(0,ty*8+3,127)
+    rectfill(lx1+thrdy,ly1+thrdx,lx2-thrdy,ly2-thrdx,0)
 
- if _upd==update_throw then
-  --★
-  local tx,ty=throwtile()
-  local lx1,ly1=p_mob.x*8+3+thrdx*4,p_mob.y*8+3+thrdy*4
-  local lx2,ly2=mid(0,tx*8+3,127),mid(0,ty*8+3,127)
-  rectfill(lx1+thrdy,ly1+thrdx,lx2-thrdy,ly2-thrdx,0)
+    local thrani,mb=flr(t/7)%2==0,getmob(tx,ty)
+    if thrani then
+      fillp(0b1010010110100101)
+    else
+      fillp(0b0101101001011010)
+    end
+    line(lx1,ly1,lx2,ly2,7)
+    fillp()
+    oprint8("+",lx2-1,ly2-2,7,0)
 
-  local thrani,mb=flr(t/7)%2==0,getmob(tx,ty)
-  if thrani then
-   fillp(0b1010010110100101)
-  else
-   fillp(0b0101101001011010)
+    if mb and thrani then
+      mb.flash=1
+    end
   end
-  line(lx1,ly1,lx2,ly2,7)
-  fillp()
-  oprint8("+",lx2-1,ly2-2,7,0)
 
-  if mb and thrani then
-   mb.flash=1
+  for x=0,15 do
+    for y=0,15 do
+      if fog[x][y]==1 then
+        rectfill2(x*8,y*8,8,8,0)
+      end
+    end
   end
- end
 
- for x=0,15 do
-  for y=0,15 do
-   if fog[x][y]==1 then
-    rectfill2(x*8,y*8,8,8,0)
-   end
+  for f in all(float) do
+    oprint8(f.txt,f.x,f.y,f.c,0)
   end
- end
-
- for f in all(float) do
-  oprint8(f.txt,f.x,f.y,f.c,0)
- end
-
 end
 
 function drawlogo()
@@ -402,19 +401,19 @@ end
 function animap()
   tani+=1
   if (tani<15) return
-    tani=0
-    for x=0,15 do
-      for y=0,15 do
-        local tle=mget(x,y)
-        if tle==64 or tle==66 then
-          tle+=1
-        elseif tle==65 or tle==67 then
-          tle-=1
-        end
-        mset(x,y,tle)
+  tani=0
+  for x=0,15 do
+    for y=0,15 do
+      local tle=mget(x,y)
+      if tle==64 or tle==66 then
+        tle+=1
+      elseif tle==65 or tle==67 then
+        tle-=1
       end
+      mset(x,y,tle)
     end
   end
+end
 
 -->8
 --tools
