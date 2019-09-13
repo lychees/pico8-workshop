@@ -415,7 +415,7 @@ function animap()
       end
     end
   end
-end
+
 -->8
 --tools
 
@@ -665,12 +665,12 @@ function trig_step()
 end
 
 function getmob(x,y)
- for m in all(mob) do
-  if m.x==x and m.y==y then
-   return m
+  for m in all(mob) do
+    if m.x==x and m.y==y then
+      return m
+    end
   end
- end
- return false
+  return false
 end
 
 function iswalkable(x,y,mode)
@@ -698,38 +698,41 @@ function inbounds(x,y)
 end
 
 function hitmob(atkm,defm,rawdmg)
- local dmg= atkm and atkm.atk or rawdmg
-
- --add curse/bless
- if defm.bless<0 then
-  dmg*=2
- elseif defm.bless>0 then
-  dmg=flr(dmg/2)
- end
- defm.bless=0
-
- local def=defm.defmin+flr(rnd(defm.defmax-defm.defmin+1))
- dmg-=min(def,dmg)
- --dmg=max(0,dmg)
-
- defm.hp-=dmg
- defm.flash=10
-
- addfloat("-"..dmg,defm.x*8,defm.y*8,9)
-
- shake=defm==p_mob and 0.08 or 0.04
-
- if defm.hp<=0 then
-  if defm!=p_mob then
-   st_kills+=1
-  else
-   st_killer=atkm.name
+  local dmg= atkm and atkm.atk or rawdmg
+  --add curse/bless
+  if defm.bless<0 then
+    dmg*=2
+  elseif defm.bless>0 then
+    dmg=flr(dmg/2)
   end
-
-  add(dmob,defm)
-  del(mob,defm)
-  defm.dur=10
- end
+  defm.bless=0
+  local def=defm.defmin+flr(rnd(defm.defmax-defm.defmin+1))
+  dmg-=min(def,dmg)
+  --dmg=max(0,dmg)
+  defm.hp-=dmg
+  defm.flash=10
+  addfloat("-"..dmg,defm.x*8,defm.y*8,9)
+  shake=defm==p_mob and 0.08 or 0.04
+  if defm.hp<=0 then
+    if is_monster(defm) then
+      st_kills+=1
+    else
+      st_killer=atkm.name
+      if defm == p_mob and #t_mobs > 1 then
+        change_active_team_member()
+      end
+      for i=1,#t_mobs do
+        if t_mobs[i] == defm then
+          t_mobs[i] = t_mobs[#t_mobs]
+          t_mobs[#t_mobs] = nil
+          break
+        end
+      end
+    end
+    add(dmob,defm)
+    del(mob,defm)
+    defm.dur=10
+  end
 end
 
 function healmob(mb,hp)
