@@ -22,7 +22,7 @@ function _init()
  mob_name=explode("player,slime,melt,shoggoth,mantis-man,giant scorpion,ghost,golem,drake")
  mob_ani=explodeval("240,192,196,200,204,208,212,216,220")
  mob_atk=explodeval("1,1,2,1,2,3,3,5,5")
- mob_hp=explodeval("5,1,2,3,3,4,5,14,8")
+ mob_hp=explodeval("100,1,2,3,3,4,5,14,8")
  mob_los=explodeval("4,4,4,4,4,4,4,4,4")
  mob_minf=explodeval("0,1,2,3,4,5,6,7,8")
  mob_maxf=explodeval("0,3,4,5,6,7,8,8,8")
@@ -37,7 +37,8 @@ function _init()
  wall_sig=explodeval("251,233,253,84,146,80,16,144,112,208,241,248,210,177,225,120,179,0,124,104,161,64,240,128,224,176,242,244,116,232,178,212,247,214,254,192,48,96,32,160,245,250,243,249,246,252")
  wall_msk=explodeval("0,6,0,11,13,11,15,13,3,9,0,0,9,12,6,3,12,15,3,7,14,15,0,15,6,12,0,0,3,6,12,9,0,9,0,15,15,7,15,14,0,0,0,0,0,0")
 
- debug={}
+debug={}
+ --debug={"fksladfa", "rewruioewpoj"}
  startgame()
 end
 
@@ -80,6 +81,8 @@ function startgame()
  mob={}
  dmob={}
  p_mob=addmob(1,1,1)
+ t_mobs = {}
+ add(t_mobs, addmob(1,1,1))
 
  p_t=0
 
@@ -109,7 +112,7 @@ end
 --updates
 function update_game()
  if talkwind then
-  if getbutt()==5 then
+  if btnp(5) then
    sfx(53)
    talkwind.dur=0
    talkwind=nil
@@ -187,6 +190,11 @@ function update_pturn()
   if p_mob.mov then
     p_mob:mov()
   end
+
+  if t_mobs[1].mov then
+    t_mobs[1]:mov()
+  end
+
   if p_t==1 then
     _upd=update_game
     if trig_step() then return end
@@ -217,11 +225,11 @@ function update_aiturn()
 end
 
 function update_gover()
- if btnp(❎) then
-  sfx(54)
-  fadeout()
-  startgame()
- end
+  if btnp(❎) then
+    sfx(54)
+    fadeout()
+    startgame()
+  end
 end
 
 function dobuttbuff()
@@ -231,30 +239,30 @@ function dobuttbuff()
 end
 
 function getbutt()
- for i=0,5 do
-  if btnp(i) then
-   return i
+  for i=0,5 do
+    if btnp(i) then
+      return i
+    end
   end
- end
- return -1
+  return -1
 end
 
 function dobutt(butt)
-    if butt<0 then return end
-    if logo_t>0 then logo_t=0 end
-    if butt<4 then
-        butt += 1
-        moveplayer(dirx[butt],diry[butt])
-    elseif butt==5 then
-        showinv()
-        sfx(54)
+  if butt<0 then return end
+  if logo_t>0 then logo_t=0 end
+  if butt<4 then
+    butt += 1
+    moveplayer(dirx[butt],diry[butt])
+  elseif butt==5 then
+    showinv()
+    sfx(54)
 -- elseif butt==4 then
   --win=true
   --p_mob.hp=0
   --st_killer="slime"
   --genfloor(floor+1)
   --prettywalls()
-    end
+  end
 end
 -->8
 --draws
@@ -476,6 +484,9 @@ function copymap(x,y)
    mset(_x,_y,tle)
    if tle==15 then
     p_mob.x,p_mob.y=_x,_y
+    for t in all(t_mobs) do
+      t.x,t.y=_x,_y
+    end
    end
   end
  end
@@ -515,6 +526,8 @@ end
 -->8
 --gameplay
 
+dxx = 0
+dyy = 0
 function moveplayer(dx,dy)
  local destx,desty=p_mob.x+dx,p_mob.y+dy
  local tle=mget(destx,desty)
@@ -522,12 +535,16 @@ function moveplayer(dx,dy)
  if iswalkable(destx,desty,"checkmobs") then
   sfx(63)
   mobwalk(p_mob,dx,dy)
+  mobwalk(t_mobs[1], dxx, dyy)
+  dxx = dx
+  dyy = dy
   st_steps+=1
   p_t=0
   _upd=update_pturn
  else
   --not walkable
   mobbump(p_mob,dx,dy)
+  mobbump(t_mobs[1], dxx, dyy)
   p_t=0
   _upd=update_pturn
 
@@ -907,56 +924,53 @@ function addwind(_x,_y,_w,_h,_txt)
 end
 
 function drawind()
- for w in all(wind) do
-  local wx,wy,ww,wh=w.x,w.y,w.w,w.h
-  rectfill2(wx,wy,ww,wh,0)
-  rect(wx+1,wy+1,wx+ww-2,wy+wh-2,6)
-  wx+=4
-  wy+=4
-  clip(wx,wy,ww-8,wh-8)
-  if w.cur then
-   wx+=6
-  end
-  for i=1,#w.txt do
-   local txt,c=w.txt[i],6
-   if w.col and w.col[i] then
-    c=w.col[i]
-   end
-   print(txt,wx,wy,c)
-   if i==w.cur then
-    spr(255,wx-5+sin(time()),wy)
-   end
-   wy+=6
-  end
-  clip()
-
-  if w.dur then
-   w.dur-=1
-   if w.dur<=0 then
-    local dif=w.h/4
-    w.y+=dif/2
-    w.h-=dif
-    if w.h<3 then
-     del(wind,w)
+  for w in all(wind) do
+    local x,y,ww,h=w.x,w.y,w.w,w.h
+    rectfill2(x,y,ww,h,0)
+    rect(x+1,y+1,x+ww-2,y+h-2,6)
+    x+=4
+    y+=4
+    clip(x,y,ww-8,h-8)
+    if w.cur then
+      x+=6
     end
-   end
-  else
-   if w.butt then
-    oprint8("❎",wx+ww-15,wy-1+sin(time()),6,0)
-   end
+    for i=1,#w.txt do
+      local txt,c=w.txt[i],6
+      if w.col and w.col[i] then
+        c=w.col[i]
+      end
+      print(txt,x,y,c)
+      if i==w.cur then
+        spr(255,x-5+sin(time()),y)
+      end
+      y+=6
+    end
+    clip()
+    if w.dur then
+      w.dur-=1
+      if w.dur<=0 then
+        local d=w.h/4
+        w.y+=d/2
+        w.h-=d
+        if w.h<3 then
+          del(wind,w)
+        end
+      end
+    elseif w.butt then
+      oprint8("❎",x+ww-15,y-1+sin(time()),6,0)
+    end
   end
- end
 end
 
 function showmsg(txt,dur)
- local wid=(#txt+2)*4+7
- local w=addwind(63-wid/2,50,wid,13,{" "..txt})
- w.dur=dur
+  local wid=(#txt+2)*4+7
+  local w=addwind(63-wid/2,50,wid,13,{" "..txt})
+  w.dur=dur
 end
 
 function showtalk(txt)
- talkwind=addwind(16,50,94,#txt*6+7,txt)
- talkwind.butt=true
+  talkwind=addwind(16,50,94,#txt*6+7,txt)
+  talkwind.butt=true
 end
 
 function addfloat(_txt,_x,_y,_c)
@@ -974,12 +988,12 @@ function dofloats()
 end
 
 function dohpwind()
- hpwind.txt[1]="♥"..p_mob.hp.."/"..p_mob.hpmax
- local hpy=5
- if p_mob.y<8 then
-  hpy=110
- end
- hpwind.y+=(hpy-hpwind.y)/5
+  hpwind.txt[1]="♥"..p_mob.hp.."/"..p_mob.hpmax.."♥"..p_mob.hp.."/"..p_mob.hpmax
+  local hpy=5
+  if p_mob.y<8 then
+    hpy=110
+  end
+  hpwind.y+=(hpy-hpwind.y)/5
 end
 
 function showinv()
@@ -1183,13 +1197,22 @@ function doai()
  local moving=false
  for m in all(mob) do
   if m!=p_mob then
-   m.mov=nil
-   if m.stun then
-    m.stun=false
-   else
-    m.lastmoved=m.task(m)
-    moving=m.lastmoved or moving
-   end
+    ok = true
+    for t in all(t_mobs) do
+      if t == m then
+        ok = false
+        break
+      end
+      if ok then
+        m.mov=nil
+        if m.stun then
+          m.stun=false
+        else
+          m.lastmoved=m.task(m)
+          moving=m.lastmoved or moving
+        end
+      end
+    end
   end
  end
  if moving then
@@ -1210,62 +1233,76 @@ function ai_wait(m)
  return false
 end
 
-function ai_attac(m)
- if dist(m.x,m.y,p_mob.x,p_mob.y)==1 then
-  --attack player
-  local dx,dy=p_mob.x-m.x,p_mob.y-m.y
-  mobbump(m,dx,dy)
-  if m.spec=="stun" and m.charge>0 then
-   stunmob(p_mob)
-   m.charge-=1
-  elseif m.spec=="ghost" and m.charge>0 then
-   hitmob(m,p_mob)
-   blessmob(p_mob,-1)
-   m.charge-=1
-  else
-   hitmob(m,p_mob)
-  end
-  sfx(57)
-  return true
- else
-  --move to player
-  if cansee(m,p_mob) then
-   m.tx,m.ty=p_mob.x,p_mob.y
-  end
-
-  if m.x==m.tx and m.y==m.ty then
-   --de aggro
-   m.task=ai_wait
-   addfloat("?",m.x*8+2,m.y*8,10)
-  else
-   if m.spec=="slow" and m.lastmoved then
-    return false
-   end
-   local bdst,cand=999,{}
-   calcdist(m.tx,m.ty)
-   for i=1,4 do
-    local dx,dy=dirx[i],diry[i]
-    local tx,ty=m.x+dx,m.y+dy
-    if iswalkable(tx,ty,"checkmobs") then
-     local dst=distmap[tx][ty]
-     if dst<bdst then
-      cand={}
-      bdst=dst
-     end
-     if dst==bdst then
-      add(cand,i)
-     end
+function try_attack(a, b)
+  if dist(a.x,a.y,b.x,b.y) == 1 then
+    local dx,dy=b.x-a.x,b.y-a.y
+    mobbump(a,dx,dy)
+    if a.charge>0 then
+      if a.spec=="stun" then
+        stunmob(b)
+      elseif a.spec=="ghost" then
+        hitmob(a,b)
+        blessmob(b,-1)
+      end
+      a.charge = -1
+    else
+      hitmob(a,b)
     end
-   end
-   if #cand>0 then
-    local c=getrnd(cand)
-    mobwalk(m,dirx[c],diry[c])
     return true
-   end
-   --todo: re-aquire target?
   end
- end
- return false
+end
+
+
+function ai_attac(m)
+  if try_attack(m,p_mob) then
+    sfx(57)
+    return true
+  else
+    for t in all(t_mobs) do
+      if try_attack(m, t) then
+        sfx(57)
+        return true
+      end
+    end
+
+    --move to player
+    if cansee(m,p_mob) then
+      m.tx,m.ty=p_mob.x,p_mob.y
+    end
+
+    if m.x==m.tx and m.y==m.ty then
+      --de aggro
+      m.task=ai_wait
+      addfloat("?",m.x*8+2,m.y*8,10)
+    else
+      if m.spec=="slow" and m.lastmoved then
+        return false
+      end
+      local bdst,cand=999,{}
+      calcdist(m.tx,m.ty)
+      for i=1,4 do
+        local dx,dy=dirx[i],diry[i]
+        local tx,ty=m.x+dx,m.y+dy
+        if iswalkable(tx,ty,"checkmobs") then
+          local dst=distmap[tx][ty]
+          if dst<bdst then
+            cand={}
+            bdst=dst
+          end
+          if dst==bdst then
+            add(cand,i)
+          end
+        end
+      end
+      if #cand>0 then
+        local c=getrnd(cand)
+        mobwalk(m,dirx[c],diry[c])
+        return true
+      end
+      --todo: re-aquire target?
+    end
+    return false
+  end
 end
 
 function cansee(m1,m2)
@@ -1410,6 +1447,9 @@ function genfloor(f)
  makefipool()
  mob={}
  add(mob,p_mob)
+ add(mob,t_mobs[1])
+ dxx = 0
+ dyy = 0
  fog=blankmap(0)
  if floor==1 then
   st_steps=0
@@ -1823,6 +1863,7 @@ function startend()
  end
  mset(px,py,15)
  p_mob.x,p_mob.y=px,py
+ t_mobs[1].x,t_mobs[1].y=px,py
 end
 
 function starscore(x,y)
