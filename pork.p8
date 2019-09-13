@@ -82,6 +82,7 @@ function startgame()
  dmob={}
  p_mob=addmob(1,1,1)
  t_mobs = {}
+ add(t_mobs, p_mob)
  add(t_mobs, addmob(1,1,1))
 
  p_t=0
@@ -187,12 +188,11 @@ end
 function update_pturn()
   dobuttbuff()
   p_t=min(p_t+0.125,1)
-  if p_mob.mov then
-    p_mob:mov()
-  end
 
-  if t_mobs[1].mov then
-    t_mobs[1]:mov()
+  for t in all(t_mobs) do
+    if t.mov then
+      t:mov()
+    end
   end
 
   if p_t==1 then
@@ -492,7 +492,6 @@ function copymap(x,y)
    tle=mget(_x+x,_y+y)
    mset(_x,_y,tle)
    if tle==15 then
-    p_mob.x,p_mob.y=_x,_y
     for t in all(t_mobs) do
       t.x,t.y=_x,_y
     end
@@ -541,36 +540,45 @@ function moveplayer(dx,dy)
  local destx,desty=p_mob.x+dx,p_mob.y+dy
  local tle=mget(destx,desty)
 
- if iswalkable(destx,desty,"checkmobs") then
-  sfx(63)
-  mobwalk(p_mob,dx,dy)
-  mobwalk(t_mobs[1], dxx, dyy)
-  dxx = dx
-  dyy = dy
-  st_steps+=1
-  p_t=0
-  _upd=update_pturn
- else
-  --not walkable
-  mobbump(p_mob,dx,dy)
-  mobbump(t_mobs[1], dxx, dyy)
-  p_t=0
-  _upd=update_pturn
-
-  local mob=getmob(destx,desty)
-  if mob then
-   sfx(58)
-   hitmob(p_mob,mob)
+  if iswalkable(destx,desty,"checkmobs") then
+    sfx(63)
+    mobwalk(p_mob,dx,dy)
+    for t in all(t_mobs) do
+      if t != p_mob then
+        mobwalk(t, dxx, dyy)
+      end
+    end
+    dxx = dx
+    dyy = dy
+    st_steps+=1
+    p_t=0
+    _upd=update_pturn
   else
-   if fget(tle,1) then
-    trig_bump(tle,destx,desty)
-   else
-    skipai=true
-    --mset(destx,desty,1)
-   end
+    --not walkable
+    mobbump(p_mob,dx,dy)
+    for t in all(t_mobs) do
+      if t != p_mob then
+        mobbump(t, dxx, dyy)
+      end
+    end
+
+    p_t=0
+    _upd=update_pturn
+
+    local mob=getmob(destx,desty)
+    if mob then
+      sfx(58)
+      hitmob(p_mob,mob)
+    else
+      if fget(tle,1) then
+        trig_bump(tle,destx,desty)
+      else
+        skipai=true
+        --mset(destx,desty,1)
+      end
+    end
   end
- end
- unfog()
+  unfog()
 end
 
 function trig_bump(tle,destx,desty)
@@ -1255,55 +1263,51 @@ end
 
 
 function ai_attac(m)
-  if try_attack(m,p_mob) then
-    sfx(57)
-    return true
+
+  for t in all(t_mobs) do
+    if try_attack(m, t) then
+      sfx(57)
+      return true
+    end
+  end
+
+  --move to player
+  if cansee(m,p_mob) then
+    m.tx,m.ty=p_mob.x,p_mob.y
+  end
+
+  if m.x==m.tx and m.y==m.ty then
+    --de aggro
+    m.task=ai_wait
+    addfloat("?",m.x*8+2,m.y*8,10)
   else
-    for t in all(t_mobs) do
-      if try_attack(m, t) then
-        sfx(57)
-        return true
-      end
+    if m.spec=="slow" and m.lastmoved then
+      return false
     end
-
-    --move to player
-    if cansee(m,p_mob) then
-      m.tx,m.ty=p_mob.x,p_mob.y
-    end
-
-    if m.x==m.tx and m.y==m.ty then
-      --de aggro
-      m.task=ai_wait
-      addfloat("?",m.x*8+2,m.y*8,10)
-    else
-      if m.spec=="slow" and m.lastmoved then
-        return false
-      end
-      local bdst,cand=999,{}
-      calcdist(m.tx,m.ty)
-      for i=1,4 do
-        local dx,dy=dirx[i],diry[i]
-        local tx,ty=m.x+dx,m.y+dy
-        if iswalkable(tx,ty,"checkmobs") then
-          local dst=distmap[tx][ty]
-          if dst<bdst then
-            cand={}
-            bdst=dst
-          end
-          if dst==bdst then
-            add(cand,i)
-          end
+    local bdst,cand=999,{}
+    calcdist(m.tx,m.ty)
+    for i=1,4 do
+      local dx,dy=dirx[i],diry[i]
+      local tx,ty=m.x+dx,m.y+dy
+      if iswalkable(tx,ty,"checkmobs") then
+        local dst=distmap[tx][ty]
+        if dst<bdst then
+          cand={}
+          bdst=dst
+        end
+        if dst==bdst then
+          add(cand,i)
         end
       end
-      if #cand>0 then
-        local c=getrnd(cand)
-        mobwalk(m,dirx[c],diry[c])
-        return true
-      end
-      --todo: re-aquire target?
     end
-    return false
+    if #cand>0 then
+      local c=getrnd(cand)
+      mobwalk(m,dirx[c],diry[c])
+      return true
+    end
+    --todo: re-aquire target?
   end
+  return false
 end
 
 function cansee(m1,m2)
@@ -1447,8 +1451,10 @@ function genfloor(f)
  floor=f
  makefipool()
  mob={}
- add(mob,p_mob)
- add(mob,t_mobs[1])
+
+  for t in all(t_mobs) do
+    add(mob, t)
+  end
  dxx = 0
  dyy = 0
  fog=blankmap(0)
@@ -1863,8 +1869,9 @@ function startend()
   rooms[roomap[px][py]].nospawn=true
  end
  mset(px,py,15)
- p_mob.x,p_mob.y=px,py
- t_mobs[1].x,t_mobs[1].y=px,py
+  for t in all(t_mobs) do
+    t.x,t.y=px,py
+  end
 end
 
 function starscore(x,y)
