@@ -22,7 +22,7 @@ function _init()
  mob_name=explode("player,slime,melt,shoggoth,mantis-man,giant scorpion,ghost,golem,drake")
  mob_ani=explodeval("240,192,196,200,204,208,212,216,220")
  mob_atk=explodeval("1,1,2,1,2,3,3,5,5")
- mob_hp=explodeval("100,1,2,3,3,4,5,14,8")
+ mob_hp=explodeval("2,1,2,3,3,4,5,14,8")
  mob_los=explodeval("4,4,4,4,4,4,4,4,4")
  mob_minf=explodeval("0,1,2,3,4,5,6,7,8")
  mob_maxf=explodeval("0,3,4,5,6,7,8,8,8")
@@ -80,8 +80,8 @@ function startgame()
  --★
  mob={}
  dmob={}
- p_mob=addmob(1,1,1)
  t_mobs = {}
+ p_mob=addmob(1,1,1)
  add(t_mobs, p_mob)
  add(t_mobs, addmob(1,1,1))
 
@@ -112,17 +112,17 @@ end
 -->8
 --updates
 function update_game()
- if talkwind then
-  if btnp(5) then
-   sfx(53)
-   talkwind.dur=0
-   talkwind=nil
+  if talkwind then
+    if btnp(5) then
+      sfx(53)
+      talkwind.dur=0
+      talkwind=nil
+    end
+  else
+    dobuttbuff()
+    dobutt(buttbuff)
+    buttbuff=-1
   end
- else
-  dobuttbuff()
-  dobutt(buttbuff)
-  buttbuff=-1
- end
 end
 
 function update_inv()
@@ -256,12 +256,29 @@ function getbutt()
   return -1
 end
 
+function change_active_team_member()
+  if #t_mobs > 1 then
+      for i=1,#t_mobs do
+        if t_mobs[i] == p_mob then
+          sfx(54)
+          p_mob = t_mobs[i%#t_mobs+1]
+          p_mob.flash = 16
+          dxx=-dxx
+          dyy=-dyy
+          break
+        end
+      end
+    end
+end
+
 function dobutt(butt)
   if butt<0 then return end
   if logo_t>0 then logo_t=0 end
   if butt<4 then
     butt += 1
     moveplayer(dirx[butt],diry[butt])
+  elseif butt==4 then
+    change_active_team_member()
   elseif butt==5 then
     showinv()
     sfx(54)
@@ -345,12 +362,12 @@ function drawlogo()
 end
 
 function drawmob(m)
- local col=10
- if m.flash>0 then
-  m.flash-=1
-  col=7
- end
- drawspr(getframe(m.ani),m.x*8+m.ox,m.y*8+m.oy,col,m.flp)
+  local col=10
+  if m.flash>0 then
+    m.flash-=1
+    col=7
+  end
+  drawspr(getframe(m.ani),m.x*8+m.ox,m.y*8+m.oy,col,m.flp)
 end
 
 --[[function draw_gover()
@@ -364,42 +381,41 @@ function draw_win()
 end]]--
 
 function draw_gover()
- cls()
- palt(12,true)
- spr(gover_spr,gover_x,30,gover_w,2)
- if not win then
-  print("killed by a "..st_killer,28,43,6)
- end
- palt()
- color(5)
- cursor(40,56)
- if not win then
-  print("floor: "..floor)
- end
- print("steps: "..st_steps)
- print("kills: "..st_kills)
- print("meals: "..st_meals)
-
- print("press ❎",46,90,5+abs(sin(time()/3)*2))
+  cls()
+  palt(12,true)
+  spr(gover_spr,gover_x,30,gover_w,2)
+  if not win then
+    print("killed by a "..st_killer,28,43,6)
+  end
+  palt()
+  color(5)
+  cursor(40,56)
+  if not win then
+    print("floor: "..floor)
+  end
+  print("steps: "..st_steps)
+  print("kills: "..st_kills)
+  print("meals: "..st_meals)
+  print("press ❎",46,90,5+abs(sin(time()/3)*2))
 end
 
 function animap()
- tani+=1
- if (tani<15) return
- tani=0
- for x=0,15 do
-  for y=0,15 do
-   local tle=mget(x,y)
-   if tle==64 or tle==66 then
-    tle+=1
-   elseif tle==65 or tle==67 then
-    tle-=1
-   end
-   mset(x,y,tle)
+  tani+=1
+  if (tani<15) return
+    tani=0
+    for x=0,15 do
+      for y=0,15 do
+        local tle=mget(x,y)
+        if tle==64 or tle==66 then
+          tle+=1
+        elseif tle==65 or tle==67 then
+          tle-=1
+        end
+        mset(x,y,tle)
+      end
+    end
   end
- end
 end
-
 -->8
 --tools
 
