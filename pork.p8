@@ -205,14 +205,23 @@ function update_pturn()
   end
 end
 
-function update_aiturn()
- dobuttbuff()
- p_t=min(p_t+0.125,1)
- for m in all(mob) do
-  if m!=p_mob and m.mov then
-   m:mov()
+function is_monster(x)
+  for t in all(t_mobs) do
+    if x == t then
+      return false
+    end
   end
- end
+  return true
+end
+
+function update_aiturn()
+  dobuttbuff()
+  p_t=min(p_t+0.125,1)
+  for m in all(mob) do
+    if is_monster(m) and m.mov then
+      m:mov()
+    end
+  end
  if p_t==1 then
   _upd=update_game
   if checkend() then
@@ -1194,33 +1203,25 @@ function mov_bump(self)
 end
 
 function doai()
- local moving=false
- for m in all(mob) do
-  if m!=p_mob then
-    ok = true
-    for t in all(t_mobs) do
-      if t == m then
-        ok = false
-        break
-      end
-      if ok then
-        m.mov=nil
-        if m.stun then
-          m.stun=false
-        else
-          m.lastmoved=m.task(m)
-          moving=m.lastmoved or moving
-        end
+  local moving=false
+  for m in all(mob) do
+    if is_monster(m) then
+      m.mov=nil
+      if m.stun then
+        m.stun=false
+      else
+        m.lastmoved=m.task(m)
+        moving=m.lastmoved or moving
       end
     end
   end
- end
- if moving then
-  _upd=update_aiturn
-  p_t=0
- else
-  p_mob.stun=false
- end
+
+  if moving then
+    _upd=update_aiturn
+    p_t=0
+  else
+    p_mob.stun=false
+  end
 end
 
 function ai_wait(m)
