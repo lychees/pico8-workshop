@@ -22,7 +22,7 @@ function _init()
  mob_name=explode("player,slime,melt,shoggoth,mantis-man,giant scorpion,ghost,golem,drake")
  mob_ani=explodeval("240,192,196,200,204,208,212,216,220")
  mob_atk=explodeval("1,1,2,1,2,3,3,5,5")
- mob_hp=explodeval("2,1,2,3,3,4,5,14,8")
+ mob_hp=explodeval("3,1,2,3,3,4,5,14,8")
  mob_los=explodeval("4,4,4,4,4,4,4,4,4")
  mob_minf=explodeval("0,1,2,3,4,5,6,7,8")
  mob_maxf=explodeval("0,3,4,5,6,7,8,8,8")
@@ -258,17 +258,17 @@ end
 
 function change_active_team_member()
   if #t_mobs > 1 then
-      for i=1,#t_mobs do
-        if t_mobs[i] == p_mob then
-          sfx(54)
-          p_mob = t_mobs[i%#t_mobs+1]
-          p_mob.flash = 16
-          dxx=-dxx
-          dyy=-dyy
-          break
-        end
+    for i=1,#t_mobs do
+      if t_mobs[i] == p_mob then
+        sfx(54)
+        p_mob = t_mobs[i%#t_mobs+1]
+        p_mob.flash = 16
+        dxx=-dxx
+        dyy=-dyy
+        break
       end
     end
+  end
 end
 
 function dobutt(butt)
@@ -693,7 +693,7 @@ function iswalkable(x,y,mode)
 end
 
 function inbounds(x,y)
- return not (x<0 or y<0 or x>15 or y>15)
+  return not (x<0 or y<0 or x>15 or y>15)
 end
 
 function hitmob(atkm,defm,rawdmg)
@@ -1419,21 +1419,18 @@ function makeipool()
 end
 
 function makefipool()
- fipool_rar={}
- fipool_com={}
-
- for i in all(ipool_rar) do
-  if itm_minf[i]<=floor
-   and itm_maxf[i]>=floor then
-   add(fipool_rar,i)
+  fipool_rar={}
+  fipool_com={}
+  for i in all(ipool_rar) do
+    if itm_minf[i]<=floor and itm_maxf[i]>=floor then
+        add(fipool_rar,i)
+    end
   end
- end
- for i in all(ipool_com) do
-  if itm_minf[i]<=floor
-   and itm_maxf[i]>=floor then
-   add(fipool_com,i)
+  for i in all(ipool_com) do
+    if itm_minf[i]<=floor and itm_maxf[i]>=floor then
+      add(fipool_com,i)
+    end
   end
- end
 end
 
 function getitm_rar()
@@ -1466,58 +1463,53 @@ end
 --gen
 
 function genfloor(f)
- floor=f
- makefipool()
- mob={}
-
+  floor=f
+  makefipool()
+  mob={}
   for t in all(t_mobs) do
     add(mob, t)
   end
- dxx = 0
- dyy = 0
- fog=blankmap(0)
- if floor==1 then
-  st_steps=0
-  poke(0x3101,66)
- end
- if floor==0 then
-  copymap(16,0)
- elseif floor==winfloor then
-  copymap(32,0)
- else
-  fog=blankmap(1)
-  mapgen()
-  unfog()
- end
+  dxx = 0
+  dyy = 0
+  fog=blankmap(0)
+  if floor==1 then
+    st_steps=0
+    poke(0x3101,66)
+  end
+  if floor==0 then
+    copymap(16,0)
+  elseif floor==winfloor then
+    copymap(32,0)
+  else
+    fog=blankmap(1)
+    mapgen()
+    unfog()
+  end
 end
 
 
 function mapgen()
-
  --todo
  --entry not in an alcove?
+  repeat
+    copymap(48,0)
+    rooms={}
+    roomap=blankmap(0)
+    doors={}
+    genrooms()
+    mazeworm()
+    placeflags()
+    carvedoors()
+  until #flaglib==1
 
- repeat
-  copymap(48,0)
-  rooms={}
-  roomap=blankmap(0)
-  doors={}
-  genrooms()
-  mazeworm()
-  placeflags()
-  carvedoors()
- until #flaglib==1
-
- carvescuts()
- startend()
- fillends()
- prettywalls()
-
- installdoors()
-
- spawnchests()
- spawnmobs()
- decorooms()
+  carvescuts()
+  startend()
+  fillends()
+  --prettywalls()
+  installdoors()
+  spawnchests()
+  spawnmobs()
+  decorooms()
 end
 
 ----------------
@@ -1526,78 +1518,77 @@ end
 
 function genrooms()
  -- tweak dis
- local fmax,rmax=5,4 --5,4?
- local mw,mh=10,10 --5,5?
+  local fmax,rmax=5,4 --5,4?
+  local mw,mh=40,40 --5,5?
 
- repeat
-  local r=rndroom(mw,mh)
-  if placeroom(r) then
-   if #rooms==1 then
-    mw/=2
-    mh/=2
-   end
-   rmax-=1
-  else
-   fmax-=1
-   --★
-   if r.w>r.h then
-    mw=max(mw-1,3)
-   else
-    mh=max(mh-1,3)
-   end
-  end
- until fmax<=0 or rmax<=0
+  repeat
+    local r=rndroom(mw,mh)
+    if placeroom(r) then
+      if #rooms==1 then
+        mw/=2
+        mh/=2
+      end
+      rmax-=1
+    else
+      fmax-=1
+      --★
+      if r.w>r.h then
+        mw=max(mw-1,3)
+      else
+        mh=max(mh-1,3)
+      end
+    end
+  until fmax<=0 or rmax<=0
 end
 
 function rndroom(mw,mh)
  --clamp max area
- local _w=3+flr(rnd(mw-2))
- mh=mid(35/_w,3,mh)
- local _h=3+flr(rnd(mh-2))
- return {
-  x=0,
-  y=0,
-  w=_w,
-  h=_h
- }
+  --local _w=3+flr(rnd(mw-2))
+  local _w = 10
+  mh=mid(35/_w,3,mh)
+  --local _h=3+flr(rnd(mh-2))
+  local _h = 10
+  return {
+    x=0,y=0,
+    w=_w,h=_h
+  }
 end
 
 function placeroom(r)
- local cand,c={}
+  local cand,c={}
 
- for _x=0,16-r.w do
-  for _y=0,16-r.h do
-   if doesroomfit(r,_x,_y) then
-    add(cand,{x=_x,y=_y})
-   end
+  for _x=0,16-r.w do
+    for _y=0,16-r.h do
+      if doesroomfit(r,_x,_y) then
+        add(cand,{x=_x,y=_y})
+      end
+    end
   end
- end
 
- if #cand==0 then return false end
+  if #cand==0 then return false end
 
- c=getrnd(cand)
- r.x=c.x
- r.y=c.y
- add(rooms,r)
- for _x=0,r.w-1 do
-  for _y=0,r.h-1 do
-   mset(_x+r.x,_y+r.y,1)
-   roomap[_x+r.x][_y+r.y]=#rooms
+  c=getrnd(cand)
+  r.x=c.x
+  r.y=c.y
+  add(rooms,r)
+  for _x=0,r.w-1 do
+    for _y=0,r.h-1 do
+      mset(_x+r.x,_y+r.y,1)
+      roomap[_x+r.x][_y+r.y]=#rooms
+    end
   end
- end
- return true
+  return true
 end
 
 function doesroomfit(r,x,y)
- for _x=-1,r.w do
-  for _y=-1,r.h do
-   if iswalkable(_x+x,_y+y) then
-    return false
-   end
+  for _x=-1,r.w do
+    for _y=-1,r.h do
+      if iswalkable(_x+x,_y+y) then
+        return false
+      end
+    end
   end
- end
-
- return true
+  return true
 end
 
 ----------------
@@ -1605,21 +1596,20 @@ end
 ----------------
 
 function mazeworm()
- repeat
-  local cand={}
-  for _x=0,15 do
-   for _y=0,15 do
-    if cancarve(_x,_y,false) and not nexttoroom(_x,_y) then
-     add(cand,{x=_x,y=_y})
+  repeat
+    local cand={}
+    for _x=0,15 do
+      for _y=0,15 do
+        if cancarve(_x,_y,false) and not nexttoroom(_x,_y) then
+          add(cand,{x=_x,y=_y})
+        end
+      end
     end
-   end
-  end
-
-  if #cand>0 then
-   local c=getrnd(cand)
-   digworm(c.x,c.y)
-  end
- until #cand<=1
+    if #cand>0 then
+      local c=getrnd(cand)
+      digworm(c.x,c.y)
+    end
+  until #cand<=1
 end
 
 function digworm(x,y)
