@@ -309,13 +309,33 @@ function dobutt(butt)
 end
 -->8
 --draws
+cxx = 0
+cyy = 0
 function draw_game()
   cls(0)
   if fadeperc==1 then return end
   animap()
-  --camera(cx*8, cy*8)
-  --map(0, 0, 0, 0, ww, hh)
-  map(cx, cy)
+  if cxx != cx*8 then
+    if cxx < cx *8 then
+      hpwind.x += 1
+      cxx += 1
+    else
+      hpwind.x -= 1
+      cxx -= 1
+    end
+  end
+  if cyy != cy*8 then
+    if cyy < cy *8 then
+      hpwind.y += 1
+      cyy += 1
+    else
+      hpwind.y -= 1
+      cyy -= 1
+    end
+  end
+  camera(cxx, cyy)
+  map(0, 0, 0, 0, ww, hh)
+  --map(cx, cy)
   for m in all(dmob) do
     if sin(time()*8)>0 or m==p_mob then
       drawmob(m)
@@ -351,15 +371,14 @@ function draw_game()
       mb.flash=1
     end
   end
-  --[[
-  for x=0,15 do
-    for y=0,15 do
+  --unfog here
+  for x=0,ww do
+    for y=0,hh do
       if fog[x][y]==1 then
         rectfill2(x*8,y*8,8,8,0)
       end
     end
   end
-  --]]
 
   for f in all(float) do
     oprint8(f.txt,f.x,f.y,f.c,0)
@@ -386,7 +405,7 @@ function drawmob(m)
     m.flash-=1
     col=7
   end
-  drawspr(getframe(m.ani),(m.x-cx)*8+m.ox,(m.y-cy)*8+m.oy,col,m.flp)
+  drawspr(getframe(m.ani),(m.x)*8+m.ox,(m.y)*8+m.oy,col,m.flp)
 end
 
 --[[function draw_gover()
@@ -812,7 +831,7 @@ function hitmob(atkm,defm,rawdmg)
 end
 
 function addfloat2(t, x, y, c)
-  addfloat(t,(x-cx)*8-(#t-1),(y-cy)*8,c or 7)
+  addfloat(t,x*8-(#t-1),y*8,c or 7)
 end
 
 function healmob(mb,hp)
@@ -1027,8 +1046,8 @@ end
 --ui
 
 function addwind(_x,_y,_w,_h,_txt)
- local w={x=_x,
-          y=_y,
+ local w={x=_x+cxx,
+          y=_y+cyy,
           w=_w,
           h=_h,
           txt=_txt}
@@ -1043,7 +1062,7 @@ function drawind()
     rect(x+1,y+1,x+ww-2,y+h-2,6)
     x+=4
     y+=4
-    clip(x,y,ww-8,h-8)
+    clip(x-(cxx),y-(cyy),ww-8,h-8)
     if w.cur then
       x+=6
     end
@@ -1102,9 +1121,9 @@ end
 
 function dohpwind()
   hpwind.txt[1]="♥"..p_mob.hp.."/"..p_mob.hpmax.."♥"..p_mob.hp.."/"..p_mob.hpmax
-  local hpy=5
-  if p_mob.y<8 then
-    hpy=110
+  local hpy=5+cyy
+  if (p_mob.y-cy) <8 then
+    hpy=110+cyy
   end
   hpwind.y+=(hpy-hpwind.y)/5
 end
@@ -1548,6 +1567,10 @@ function genfloor(f)
   hh = 24
   cx = 0
   cy = 0
+  cxx = 0
+  cyy = 0
+  hpwind.x = 5
+  hpwind.y = 5
   floor=f
   makefipool()
   mob={}
@@ -1964,13 +1987,21 @@ function startend()
   mset(px,py,15)
   for t in all(t_mobs) do
     t.x,t.y=px,py
-    while (px-cx) > (16-4) and cx < ww-16 do
+  end
+
+    local ox = 4
+    local oy = 4
+
+    while (px-cx) > (16-ox) and cx < ww-16 do
       cx += 1
     end
-    while (py-cy) > (16-4) and cy < hh-16 do
+    while (py-cy) > (16-oy) and cy < hh-16 do
       cy += 1
     end
-  end
+    cxx = cx * 8
+    cyy = cy * 8
+    hpwind.x += cxx
+    hpwind.y += cyy
 end
 
 function starscore(x,y)
