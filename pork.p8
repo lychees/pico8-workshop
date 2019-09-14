@@ -2,6 +2,18 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 function _init()
+  st = {}
+  ed = {}
+  for x=0,15 do
+    st[x] = {}
+    ed[x] = {}
+    for y=0,15 do
+      st[x][y] = mget(16+x, y)
+      ed[x][y] = mget(32+x, y)
+    end
+  end
+
+
  t=0
  shake=0
 
@@ -86,6 +98,9 @@ function startgame()
  p_mob=addmob(1,1,1)
  add(t_mobs, p_mob)
  add(t_mobs, addmob(1,1,1))
+ t_mobs[1].hpmax += 2
+ t_mobs[1].hp += 2
+ t_mobs[2].atk += 1
 
  p_t=0
 
@@ -407,8 +422,8 @@ function animap()
   tani+=1
   if (tani<15) return
   tani=0
-  for x=0,15 do
-    for y=0,15 do
+  for x=0,ww do
+    for y=0,hh do
       local tle=mget(x,y)
       if tle==64 or tle==66 then
         tle+=1
@@ -505,6 +520,26 @@ function getrnd(arr)
  return arr[1+flr(rnd(#arr))]
 end
 
+
+function initmap(t)
+ local tle
+ for _x=0,ww-1 do
+  for _y=0,hh-1 do
+    if (t[_x] == nil or t[_x][_y] == nil) then
+      mset(_x,_y,2)
+    else
+      tle=t[_x][_y]
+      mset(_x,_y,tle)
+      if tle==15 then
+        for t in all(t_mobs) do
+          t.x,t.y=_x,_y
+        end
+      end
+    end
+  end
+ end
+end
+
 function copymap(x,y)
  local tle
  for _x=0,ww-1 do
@@ -512,6 +547,7 @@ function copymap(x,y)
 
     if (_x >=16 or _y>=16) then
        --mset(_x,_y,4)
+       mset(_x,_y,2)
     else
       tle=mget(_x+x,_y+y)
       mset(_x,_y,tle)
@@ -734,7 +770,7 @@ end
 ww = 0
 hh = 0
 function inbounds(x,y)
-  return not (x<0 or y<0 or x>=hh or y>=ww)
+  return not (x<0 or y<0 or x>=ww or y>=hh)
 end
 
 function hitmob(atkm,defm,rawdmg)
@@ -863,8 +899,8 @@ end
 
 function unfog()
  local px,py=p_mob.x,p_mob.y
- for x=0,15 do
-  for y=0,15 do
+ for x=0,ww-1 do
+  for y=0,hh-1 do
    --★
    if fog[x][y]==1 and dist(px,py,x,y)<=p_mob.los and los(px,py,x,y) then
     unfogtile(x,y)
@@ -1389,7 +1425,7 @@ function spawnmobs()
  if #mobpool==0 then return end
 
  local minmons=explodeval("3,5,7,9,10,11,12,13")
- local maxmons=explodeval("6,10,14,18,20,22,24,26")
+ local maxmons=explodeval("12,20,24,36,40,44,48,52")
 
  local placed,rpot=0,{}
 
@@ -1508,8 +1544,8 @@ end
 --gen
 
 function genfloor(f)
-  ww = 32
-  hh = 32
+  ww = 24
+  hh = 24
   cx = 0
   cy = 0
   floor=f
@@ -1526,9 +1562,11 @@ function genfloor(f)
     poke(0x3101,66)
   end
   if floor==0 then
-    copymap(16,0)
+    --copymap(16-128,-128)
+    initmap(st)
   elseif floor==winfloor then
-    copymap(32,0)
+    initmap(ed)
+    --copymap(32-128,-128)
   else
     fog=blankmap(1)
     mapgen()
@@ -1556,10 +1594,10 @@ function mapgen()
   carvescuts()
   startend()
   fillends()
-  --prettywalls()
+  prettywalls()
   installdoors()
   spawnchests()
-  --spawnmobs()
+  spawnmobs()
   decorooms()
 end
 
@@ -1569,8 +1607,8 @@ end
 
 function genrooms()
  -- tweak dis
-  local fmax,rmax=30,30 --5,4?
-  local mw,mh=30,30 --5,5?
+  local fmax,rmax=ww,hh --5,4?
+  local mw,mh=ww,hh --5,5?
 
   repeat
     local r=rndroom(mw,mh)
@@ -1596,7 +1634,7 @@ function rndroom(mw,mh)
  --clamp max area
   local _w=3+flr(rnd(mw-2))
   --local _w = 10
-  mh=mid(35/_w,3,mh)
+  --mh=mid(35/_w,3,mh)
   local _h=3+flr(rnd(mh-2))
   --local _h = 10
   return {
@@ -1768,8 +1806,8 @@ function carvedoors()
  local x1,y1,x2,y2,found,_f1,_f2,drs=1,1,1,1
  repeat
   drs={}
-  for _x=0,15 do
-   for _y=0,15 do
+  for _x=0,ww-1 do
+   for _y=0,hh-1 do
     if not iswalkable(_x,_y) then
      local sig=getsig(_x,_y)
      found=false
@@ -1802,8 +1840,8 @@ function carvescuts()
  local x1,y1,x2,y2,cut,found,drs=1,1,1,1,0
  repeat
   drs={}
-  for _x=0,15 do
-   for _y=0,15 do
+  for _x=0,ww-1 do
+   for _y=0,hh-1 do
     if not iswalkable(_x,_y) then
      local sig=getsig(_x,_y)
      found=false
@@ -1835,8 +1873,8 @@ function fillends()
  local filled,tle
  repeat
   filled=false
-  for _x=0,15 do
-   for _y=0,15 do
+  for _x=0,ww-1 do
+   for _y=0,hh-1 do
     tle=mget(_x,_y)
     --★
     if cancarve(_x,_y,true) and tle!=14 and tle!=15 then
@@ -1870,12 +1908,8 @@ end
 function installdoors()
  for d in all(doors) do
   local dx,dy=d.x,d.y
-  if (mget(dx,dy)==1
-   or mget(dx,dy)==4)
-   and isdoor(dx,dy)
-   and not next2tile(dx,dy,13) then
-
-   mset(dx,dy,13)
+  if (mget(dx,dy)==1 or mget(dx,dy)==4) and isdoor(dx,dy) and not next2tile(dx,dy,13) then
+    mset(dx,dy,13)
   end
  end
 end
@@ -1891,8 +1925,8 @@ function startend()
  until iswalkable(px,py)
  calcdist(px,py)
  --★
- for x=0,15 do
-  for y=0,15 do
+ for x=0,ww-1 do
+  for y=0,hh-1 do
    local tmp=distmap[x][y]
    if iswalkable(x,y) and tmp>high then
     px,py,high=x,y,tmp
@@ -1901,8 +1935,8 @@ function startend()
  end
  calcdist(px,py)
  high=0
- for x=0,15 do
-  for y=0,15 do
+ for x=0,ww-1 do
+  for y=0,hh-1 do
    local tmp=distmap[x][y]
    if tmp>high and cancarve(x,y) then
     ex,ey,high=x,y,tmp
@@ -1911,8 +1945,8 @@ function startend()
  end
  mset(ex,ey,14)
 
- for x=0,15 do
-  for y=0,15 do
+ for x=0,ww-1 do
+  for y=0,hh-1 do
    local tmp=distmap[x][y]
    if tmp>=0 then
     local score=starscore(x,y)
@@ -1927,9 +1961,15 @@ function startend()
  if roomap[px][py]>0 then
   rooms[roomap[px][py]].nospawn=true
  end
- mset(px,py,15)
+  mset(px,py,15)
   for t in all(t_mobs) do
     t.x,t.y=px,py
+    while (px-cx) > (16-4) and cx < ww-16 do
+      cx += 1
+    end
+    while (py-cy) > (16-4) and cy < hh-16 do
+      cy += 1
+    end
   end
 end
 
@@ -1960,8 +2000,8 @@ function next2tile(_x,_y,tle)
 end
 
 function prettywalls()
- for x=0,15 do
-  for y=0,15 do
+ for x=0,ww-1 do
+  for y=0,hh-1 do
    local tle=mget(x,y)
    if tle==2 then
     local ntle=sigarray(getsig(x,y),wall_sig,wall_msk)
@@ -2035,8 +2075,9 @@ function deco_vase(r,tx,ty,x,y)
  if iswalkable(tx,ty,"checkmobs") and
     not next2tile(tx,ty,13) and
     not bcomp(getsig(tx,ty),0,0b00001111) then
-
-  mset(tx,ty,getrnd(tarr_vase))
+    if rnd(6) < 4 then
+      mset(tx,ty,getrnd(tarr_vase))
+    end
  end
 end
 
