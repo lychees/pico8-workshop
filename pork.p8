@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 16
+version 18
 __lua__
 function _init()
  t=0
@@ -48,20 +48,22 @@ function _update60()
  dofloats()
  dohpwind()
 end
-
+xxx = 0
+cx = 0
+cy = 0
 function _draw()
- doshake()
- _drw()
- drawind()
- drawlogo()
- --fadeperc=0
- checkfade()
- --★
- cursor(4,4)
- color(8)
- for txt in all(debug) do
-  print(txt)
- end
+  doshake()
+  _drw()
+  drawind()
+  drawlogo()
+  --fadeperc=0
+  checkfade()
+  --★
+  cursor(4,4)
+  color(8)
+  for txt in all(debug) do
+    print(txt)
+  end
 end
 
 function startgame()
@@ -296,7 +298,9 @@ function draw_game()
   cls(0)
   if fadeperc==1 then return end
   animap()
-  map()
+  --camera(cx*8, cy*8)
+  --map(0, 0, 0, 0, ww, hh)
+  map(cx, cy)
   for m in all(dmob) do
     if sin(time()*8)>0 or m==p_mob then
       drawmob(m)
@@ -332,7 +336,7 @@ function draw_game()
       mb.flash=1
     end
   end
-
+  --[[
   for x=0,15 do
     for y=0,15 do
       if fog[x][y]==1 then
@@ -340,6 +344,7 @@ function draw_game()
       end
     end
   end
+  --]]
 
   for f in all(float) do
     oprint8(f.txt,f.x,f.y,f.c,0)
@@ -366,7 +371,7 @@ function drawmob(m)
     m.flash-=1
     col=7
   end
-  drawspr(getframe(m.ani),m.x*8+m.ox,m.y*8+m.oy,col,m.flp)
+  drawspr(getframe(m.ani),(m.x-cx)*8+m.ox,(m.y-cy)*8+m.oy,col,m.flp)
 end
 
 --[[function draw_gover()
@@ -487,9 +492,9 @@ function blankmap(_dflt)
  local ret={}
  if (_dflt==nil) _dflt=0
 
- for x=0,15 do
+ for x=0,ww do
   ret[x]={}
-  for y=0,15 do
+  for y=0,hh do
    ret[x][y]=_dflt
   end
  end
@@ -502,18 +507,33 @@ end
 
 function copymap(x,y)
  local tle
- for _x=0,15 do
-  for _y=0,15 do
-   tle=mget(_x+x,_y+y)
-   mset(_x,_y,tle)
-   if tle==15 then
-    for t in all(t_mobs) do
-      t.x,t.y=_x,_y
+ for _x=0,ww-1 do
+  for _y=0,hh-1 do
+
+    if (_x >=16 or _y>=16) then
+       --mset(_x,_y,4)
+    else
+      tle=mget(_x+x,_y+y)
+      mset(_x,_y,tle)
+      if tle==15 then
+        for t in all(t_mobs) do
+          t.x,t.y=_x,_y
+        end
+      end
     end
-   end
   end
  end
 end
+
+
+function fillmap()
+ for _x=0,ww-1 do
+  for _y=0,hh-1 do
+    mset(_x,_y,2)
+  end
+ end
+end
+
 
 function explode(s)
  local retval,lastpos={},1
@@ -552,12 +572,31 @@ end
 dxx = 0
 dyy = 0
 function moveplayer(dx,dy)
+
  local destx,desty=p_mob.x+dx,p_mob.y+dy
  local tle=mget(destx,desty)
 
   if iswalkable(destx,desty,"checkmobs") then
     sfx(63)
     mobwalk(p_mob,dx,dy)
+    local ox = 6
+    local oy = 6
+
+    if (dx == -1 and p_mob.x-cx < ox and cx > 0) then
+      cx -= 1
+    end
+    if (dx == 1 and p_mob.x-cx > (16-ox) and cx < ww-16) then
+      cx += 1
+    end
+
+    if (dy == -1 and p_mob.y-cy < ox and cy > 0) then
+      cy -= 1
+    end
+    if (dy == 1 and p_mob.y-cy > (16-oy) and cy < hh-16) then
+      cy += 1
+    end
+
+
     for t in all(t_mobs) do
       if t != p_mob then
         mobwalk(t, dxx, dyy)
@@ -573,7 +612,7 @@ function moveplayer(dx,dy)
     mobbump(p_mob,dx,dy)
     for t in all(t_mobs) do
       if t != p_mob then
-        mobbump(t, dxx, dyy)
+        mobstop(t, dxx, dyy)
       end
     end
 
@@ -692,8 +731,10 @@ function iswalkable(x,y,mode)
  return false
 end
 
+ww = 0
+hh = 0
 function inbounds(x,y)
-  return not (x<0 or y<0 or x>15 or y>15)
+  return not (x<0 or y<0 or x>=hh or y>=ww)
 end
 
 function hitmob(atkm,defm,rawdmg)
@@ -710,7 +751,7 @@ function hitmob(atkm,defm,rawdmg)
   --dmg=max(0,dmg)
   defm.hp-=dmg
   defm.flash=10
-  addfloat("-"..dmg,defm.x*8,defm.y*8,9)
+  addfloat2("-"..dmg,defm.x,defm.y,9)
   shake=defm==p_mob and 0.08 or 0.04
   if defm.hp<=0 then
     if is_monster(defm) then
@@ -734,37 +775,38 @@ function hitmob(atkm,defm,rawdmg)
   end
 end
 
-function healmob(mb,hp)
- hp=min(mb.hpmax-mb.hp,hp)
- mb.hp+=hp
- mb.flash=10
+function addfloat2(t, x, y, c)
+  addfloat(t,(x-cx)*8-(#t-1),(y-cy)*8,c or 7)
+end
 
- addfloat("+"..hp,mb.x*8,mb.y*8,7)
- sfx(51)
+function healmob(mb,hp)
+  hp=min(mb.hpmax-mb.hp,hp)
+  mb.hp+=hp
+  mb.flash=10
+  addfloat2("+"..hp,mb.x,mb.y)
+  sfx(51)
 end
 
 function stunmob(mb)
- mb.stun=true
- mb.flash=10
- addfloat("stun",mb.x*8-3,mb.y*8,7)
+  mb.stun=true
+  mb.flash=10
+  addfloat2("stun",mb.x,mb.y)
  sfx(51)
 end
 
 function blessmob(mb,val)
- mb.bless=mid(-1,1,mb.bless+val)
- mb.flash=10
+  mb.bless=mid(-1,1,mb.bless+val)
+  mb.flash=10
+  local txt="bless"
+  if val<0 then txt="curse" end
+  addfloat2(txt,mb.x,mb.y)
 
- local txt="bless"
- if val<0 then txt="curse" end
-
- addfloat(txt,mb.x*8-6,mb.y*8,7)
-
- if mb.spec=="ghost" and val>0 then
-  add(dmob,mb)
-  del(mob,mb)
-  mb.dur=10
- end
- sfx(51)
+  if mb.spec=="ghost" and val>0 then
+    add(dmob,mb)
+    del(mob,mb)
+    mb.dur=10
+  end
+  sfx(51)
 end
 
 function checkend()
@@ -1201,7 +1243,10 @@ function mobwalk(mb,dx,dy)
  mb.ox,mb.oy=mb.sox,mb.soy
  mb.mov=mov_walk
 end
-
+function mobstop(mb)
+  mb.sox,mb.soy=0,0
+ mb.ox,mb.oy=0,0
+end
 function mobbump(mb,dx,dy)
  mobflip(mb,dx)
  mb.sox,mb.soy=dx*8,dy*8
@@ -1251,13 +1296,13 @@ function doai()
 end
 
 function ai_wait(m)
- if cansee(m,p_mob) then
+  if cansee(m,p_mob) then
   --aggro
-  m.task=ai_attac
-  m.tx,m.ty=p_mob.x,p_mob.y
-  addfloat("!",m.x*8+2,m.y*8,10)
- end
- return false
+    m.task=ai_attac
+    m.tx,m.ty=p_mob.x,p_mob.y
+    addfloat2("!",m.x,m.y,10)
+  end
+  return false
 end
 
 function try_attack(a, b)
@@ -1297,7 +1342,7 @@ function ai_attac(m)
   if m.x==m.tx and m.y==m.ty then
     --de aggro
     m.task=ai_wait
-    addfloat("?",m.x*8+2,m.y*8,10)
+    addfloat("?",m.x,m.y,10)
   else
     if m.spec=="slow" and m.lastmoved then
       return false
@@ -1463,6 +1508,10 @@ end
 --gen
 
 function genfloor(f)
+  ww = 32
+  hh = 32
+  cx = 0
+  cy = 0
   floor=f
   makefipool()
   mob={}
@@ -1492,7 +1541,9 @@ function mapgen()
  --todo
  --entry not in an alcove?
   repeat
-    copymap(48,0)
+    fillmap()
+    --copymap(48,0)
+
     rooms={}
     roomap=blankmap(0)
     doors={}
@@ -1508,7 +1559,7 @@ function mapgen()
   --prettywalls()
   installdoors()
   spawnchests()
-  spawnmobs()
+  --spawnmobs()
   decorooms()
 end
 
@@ -1518,15 +1569,15 @@ end
 
 function genrooms()
  -- tweak dis
-  local fmax,rmax=5,4 --5,4?
-  local mw,mh=40,40 --5,5?
+  local fmax,rmax=30,30 --5,4?
+  local mw,mh=30,30 --5,5?
 
   repeat
     local r=rndroom(mw,mh)
     if placeroom(r) then
       if #rooms==1 then
-        mw/=2
-        mh/=2
+        --mw/=2
+        --mh/=2
       end
       rmax-=1
     else
@@ -1543,11 +1594,11 @@ end
 
 function rndroom(mw,mh)
  --clamp max area
-  --local _w=3+flr(rnd(mw-2))
-  local _w = 10
+  local _w=3+flr(rnd(mw-2))
+  --local _w = 10
   mh=mid(35/_w,3,mh)
-  --local _h=3+flr(rnd(mh-2))
-  local _h = 10
+  local _h=3+flr(rnd(mh-2))
+  --local _h = 10
   return {
     x=0,y=0,
     w=_w,h=_h
@@ -1557,8 +1608,8 @@ end
 function placeroom(r)
   local cand,c={}
 
-  for _x=0,16-r.w do
-    for _y=0,16-r.h do
+  for _x=0,ww-r.w do
+    for _y=0,hh-r.h do
       if doesroomfit(r,_x,_y) then
         add(cand,{x=_x,y=_y})
       end
@@ -1598,8 +1649,8 @@ end
 function mazeworm()
   repeat
     local cand={}
-    for _x=0,15 do
-      for _y=0,15 do
+    for _x=0,ww do
+      for _y=0,hh do
         if cancarve(_x,_y,false) and not nexttoroom(_x,_y) then
           add(cand,{x=_x,y=_y})
         end
@@ -1684,8 +1735,8 @@ end
 function placeflags()
  local curf=1
  flags,flaglib=blankmap(0),{}
- for _x=0,15 do
-  for _y=0,15 do
+ for _x=0,16-1 do
+  for _y=0,16-1 do
    if iswalkable(_x,_y) and flags[_x][_y]==0 then
     growflag(_x,_y,curf)
     add(flaglib,curf)
@@ -2258,3 +2309,4 @@ __music__
 04 2a2b2c44
 00 6d6e6f44
 04 30313244
+
